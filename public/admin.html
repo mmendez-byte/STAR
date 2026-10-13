@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#030a15">
-<title>Comentarios · Proyecto STAR</title>
+<title>Admin de comentarios · Proyecto STAR</title>
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/assets/css/sgo-tokens.css">
 <link rel="stylesheet" href="/assets/css/sgo-components.css">
@@ -13,26 +13,29 @@
 </head>
 <body class="page page--hub">
 <header class="topbar">
-  <a class="topbar__brand" href="/" aria-label="Escenarios">
+  <span class="topbar__brand">
     <img src="/assets/img/sullairgo-logo.jpg" alt="SullairGo" class="logo-on-dark">
-    <span class="topbar__project">Proyecto STAR</span>
-  </a>
-  <a class="topbar__action" href="/salir">Salir</a>
+    <span class="topbar__project">Proyecto STAR · Admin</span>
+  </span>
+  <a class="topbar__action" href="/admin/salir">Salir del modo admin</a>
 </header>
 <main class="hub">
   <div class="hub__header">
-    <p class="eyebrow"><a href="/" class="crumb">Escenarios</a> · Comentarios de testers</p>
-    <h1>Comentarios</h1>
+    <p class="eyebrow">Administración</p>
+    <h1>Comentarios de testers</h1>
   </div>
+  <div class="admin-bar">
   <div class="filter" role="radiogroup" aria-label="Filtrar por estado">
     <label><input type="radio" name="estado" value="abierto" checked><span>Abiertos <b data-count="abierto">0</b></span></label>
     <label><input type="radio" name="estado" value="resuelto"><span>Resueltos <b data-count="resuelto">0</b></span></label>
     <label><input type="radio" name="estado" value="todos"><span>Todos <b data-count="todos">0</b></span></label>
   </div>
+  <button type="button" class="hub__board admin-csv" id="csv">Descargar CSV</button>
+  </div>
   <div class="table-wrap">
     <table class="comments-table">
       <thead>
-        <tr><th scope="col">Pantalla</th><th scope="col">Comentario</th><th scope="col">Quién</th><th scope="col">Vista</th><th scope="col">Fecha</th><th scope="col"><span class="sr-only">Estado</span></th></tr>
+        <tr><th scope="col">Pantalla</th><th scope="col">Comentario</th><th scope="col">Quién</th><th scope="col">Vista</th><th scope="col">Fecha</th><th scope="col"><span class="sr-only">Acciones</span></th></tr>
       </thead>
       <tbody id="rows"><tr><td colspan="6" class="comments-table__empty">Cargando comentarios…</td></tr></tbody>
     </table>
@@ -40,7 +43,7 @@
 </main>
 <script src="/app/data.js"></script>
 <script>
-// Todos los comentarios de los testers, para revisarlos y marcarlos como resueltos.
+// Administración: todos los comentarios de los testers. Marcar resueltos, reabrir, borrar y exportar.
 (function () {
   var titles = {};
   window.STAR.SCENARIOS.forEach(function (s) { titles[s.id] = s.title; });
@@ -71,12 +74,23 @@
         '<td data-label="Quién">' + esc(c.nombre) + '</td>' +
         '<td data-label="Vista">' + (c.vista === "desktop" ? "Desktop" : "Celular") + '</td>' +
         '<td data-label="Fecha" class="nowrap">' + esc(fmt.format(new Date(c.creado))) + '</td>' +
-        '<td data-label="Estado"><button type="button" class="state-btn" data-id="' + c.id + '">' + (resolved ? "Reabrir" : "Marcar resuelto") + '</button></td>' +
+        '<td data-label="Acciones"><div class="row-actions"><button type="button" class="state-btn" data-id="' + c.id + '">' + (resolved ? "Reabrir" : "Marcar resuelto") + '</button>' +
+        '<button type="button" class="link danger" data-delete="' + c.id + '">Borrar</button></div></td>' +
         '</tr>';
     }).join("");
   }
   document.querySelector(".filter").addEventListener("change", function (e) { filter = e.target.value; paint(); });
   rows.addEventListener("click", function (e) {
+    var del = e.target.closest("[data-delete]");
+    if (del) {
+      var delId = Number(del.getAttribute("data-delete"));
+      if (!window.confirm("¿Borrar este comentario? No se puede deshacer.")) return;
+      fetch("/api/comentarios/" + delId, { method: "DELETE" }).then(function (r) {
+        if (r.ok) comments = comments.filter(function (x) { return x.id !== delId; });
+        paint();
+      });
+      return;
+    }
     var btn = e.target.closest("[data-id]");
     if (!btn) return;
     var id = Number(btn.getAttribute("data-id"));
@@ -90,6 +104,19 @@
       if (data.comentario) comments = comments.map(function (x) { return x.id === id ? data.comentario : x; });
       paint();
     }).catch(function () { btn.disabled = false; });
+  });
+  document.getElementById("csv").addEventListener("click", function () {
+    var cols = ["id", "escenario", "pantalla", "nombre", "comentario", "vista", "estado", "creado", "resuelto"];
+    var lines = [cols.join(",")].concat(comments.map(function (c) {
+      var row = Object.assign({ pantalla: titles[c.escenario] || "" }, c);
+      return cols.map(function (k) { return '"' + String(row[k] == null ? "" : row[k]).replace(/"/g, '""') + '"'; }).join(",");
+    }));
+    var blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "comentarios-star-" + new Date().toISOString().slice(0, 10) + ".csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
   });
   fetch("/api/comentarios").then(function (r) { return r.json(); }).then(function (data) {
     comments = data.comentarios || [];

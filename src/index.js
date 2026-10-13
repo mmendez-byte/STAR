@@ -2,9 +2,14 @@
 // archivos estáticos de public/. Todo pedido pasa primero por acá
 // (assets.run_worker_first en wrangler.jsonc), salvo /assets/*, que es
 // público porque lo usa la pantalla de acceso.
+//
+// Administración: /admin?clave=<clave> deja una cookie de admin (30 días).
+// Solo el admin ve /admin y puede resolver o borrar comentarios.
 
 const COOKIE = "star_session";
 const SESSION_DAYS = 7;
+const ADMIN_COOKIE = "star_admin";
+const ADMIN_DAYS = 30;
 const PUBLIC_PREFIXES = ["/assets/"];
 // Cada escenario es la misma app (public/visita.html); el código va en la URL.
 const SCENARIO_PATH = /^\/escenarios\/[\w-]+\/?$/;
@@ -28,13 +33,18 @@ export default {
       return env.ASSETS.fetch(request);
     }
 
-    if (!(await isAuthenticated(request, env))) {
+    const admin = await isAdmin(request, env);
+    if (pathname === "/admin" || pathname.startsWith("/admin/") || pathname.startsWith("/admin.")) {
+      return adminRoute(request, env, url, admin);
+    }
+
+    if (!admin && !(await isAuthenticated(request, env))) {
       if (pathname.startsWith("/api/")) return json({ error: "Sesión vencida: volvé a ingresar." }, 401);
       const next = pathname === "/" ? "" : `?next=${encodeURIComponent(pathname + url.search)}`;
       return redirect(url, `/login${next}`);
     }
 
-    if (pathname.startsWith("/api/")) return api(request, env, url);
+    if (pathname.startsWith("/api/")) return api(request, env, url, admin);
 
     const asset = SCENARIO_PATH.test(pathname) ? new Request(new URL("/visita", url), request) : request;
     const response = await env.ASSETS.fetch(asset);
@@ -49,13 +59,13 @@ export default {
 // GET    /api/comentarios[?escenario=R1]   lista, más nuevos primero
 // POST   /api/comentarios                  { escenario, nombre, comentario, vista }
 // PATCH  /api/comentarios/:id              { estado: "abierto" | "resuelto" }
-async function api(request, env, url) {
+async function api(request, env, url, admin) {
   const { pathname } = url;
   if (pathname === "/api/comentarios" && request.method === "GET") {
     const escenario = url.searchParams.get("escenario");
     const query = escenario
       ? env.DB.prepare("SELECT * FROM comentarios WHERE escenario = ?1 ORDER BY creado DESC, id DESC LIMIT 200").bind(escenario)
-      : env.DB.prepare("SELECT * FROM comentarios ORDER BY creado DESC, id DESC LIMIT 500");
+      : env.DB.prepare("SELECT * FROM comentarios ORDER BY creado DESC, id DESC LIMIT 1000");
     const { results } = await query.all();
     return json({ comentarios: results });
   }
@@ -79,6 +89,11 @@ async function api(request, env, url) {
   }
 
   const byId = pathname.match(/^\/api\/comentarios\/(\d+)$/);
+  if (byId && !admin) return json({ error: "Solo el administrador puede modificar comentarios." }, 403);
+  if (byId && request.method === "DELETE") {
+    const row = await env.DB.prepare("DELETE FROM comentarios WHERE id = ?1 RETURNING id").bind(Number(byId[1])).first();
+    return row ? json({ borrado: row.id }) : json({ error: "El comentario no existe." }, 404);
+  }
   if (byId && request.method === "PATCH") {
     const body = await readJson(request);
     if (!body || !["abierto", "resuelto"].includes(body.estado)) return json({ error: "Estado inválido." }, 400);
@@ -91,6 +106,46 @@ async function api(request, env, url) {
   }
 
   return json({ error: "No encontrado." }, 404);
+}
+
+// ── Administración ─────────────────────────────────────────
+async function adminRoute(request, env, url, admin) {
+  const clave = url.searchParams.get("clave");
+  if (url.pathname === "/admin" && clave) {
+    if (!(await adminTokenMatches(clave, env))) return notFound();
+    const cookie = `${ADMIN_COOKIE}=${await adminToken(env)}; Path=/; Max-Age=${ADMIN_DAYS * 86400}; HttpOnly; Secure; SameSite=Lax`;
+    return redirect(url, "/admin", cookie);
+  }
+  if (!admin) return notFound();
+  if (url.pathname === "/admin/salir") {
+    return redirect(url, "/", `${ADMIN_COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`);
+  }
+  const response = await env.ASSETS.fetch(new Request(new URL("/admin", url), request));
+  const headers = new Headers(response.headers);
+  headers.set("Cache-Control", "private, no-store");
+  headers.set("X-Robots-Tag", "noindex, nofollow");
+  return new Response(response.body, { status: response.status, headers });
+}
+
+async function adminTokenMatches(clave, env) {
+  if (!env.ADMIN_TOKEN_HASH) return false;
+  return timingSafeEqual(await sha256(clave), env.ADMIN_TOKEN_HASH.toLowerCase());
+}
+
+async function adminToken(env) {
+  return sha256(`star-admin:v1:${env.ADMIN_TOKEN_HASH}`);
+}
+
+async function isAdmin(request, env) {
+  if (!env.ADMIN_TOKEN_HASH) return false;
+  const cookies = request.headers.get("Cookie") || "";
+  const match = cookies.match(new RegExp(`(?:^|;\\s*)${ADMIN_COOKIE}=([a-f0-9]{64})`));
+  if (!match) return false;
+  return timingSafeEqual(match[1], await adminToken(env));
+}
+
+function notFound() {
+  return new Response("No encontrado", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
 }
 
 async function readJson(request) {

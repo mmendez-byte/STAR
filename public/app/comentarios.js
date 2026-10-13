@@ -103,8 +103,7 @@
       '<div class="cmt__body">' +
       '<p class="cmt__meta"><strong>' + esc(c.nombre) + "</strong><span>" + esc(when(c.creado)) + " · en " + (c.vista === "desktop" ? "desktop" : "celular") + "</span></p>" +
       '<p class="cmt__text">' + esc(c.comentario) + "</p>" +
-      '<p class="cmt__actions">' + (resolved ? '<span class="cmt__resolved">Resuelto</span> · ' : "") +
-      '<button type="button" class="link" data-cmt-toggle="' + c.id + '">' + (resolved ? "Reabrir" : "Marcar resuelto") + "</button></p>" +
+      (resolved ? '<p class="cmt__actions"><span class="cmt__resolved">Resuelto</span></p>' : "") +
       "</div></li>"
     );
   }
@@ -183,28 +182,6 @@
       .then(function () {
         submit.disabled = false;
         submit.textContent = "Enviar comentario";
-      });
-  });
-
-  list.addEventListener("click", function (e) {
-    var button = e.target.closest("[data-cmt-toggle]");
-    if (!button) return;
-    var id = Number(button.getAttribute("data-cmt-toggle"));
-    var current = comments.filter(function (c) {
-      return c.id === id;
-    })[0];
-    if (!current) return;
-    button.disabled = true;
-    request("PATCH", "/api/comentarios/" + id, { estado: current.estado === "resuelto" ? "abierto" : "resuelto" })
-      .then(function (data) {
-        comments = comments.map(function (c) {
-          return c.id === id ? data.comentario : c;
-        });
-        paintCount();
-        paintList();
-      })
-      .catch(function () {
-        button.disabled = false;
       });
   });
 

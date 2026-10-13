@@ -44,11 +44,20 @@ Supuestos a validar con Sullair:
 
 ## Comentarios de testers
 
-En cada pantalla hay una bolita flotante (encima de la del escenario) para dejar un comentario con nombre: queda asociado a esa pantalla y a si se estaba viendo en celular o desktop. El nombre se recuerda en el navegador. La bolita muestra cuántos comentarios abiertos tiene la pantalla.
+En cada pantalla hay una bolita flotante (encima de la del escenario) para dejar un comentario con nombre: queda asociado a esa pantalla y a si se estaba viendo en celular o desktop. El nombre se recuerda en el navegador. La bolita muestra cuántos comentarios abiertos tiene la pantalla. Los testers comentan y ven los comentarios; no pueden resolverlos ni borrarlos.
 
-- `/comentarios` lista todos en una tabla, con filtro abiertos / resueltos y botón para marcarlos.
-- Se guardan en **Cloudflare D1** (base `sullairgo-star`, tabla `comentarios`; esquema en `migrations/`).
-- API (detrás del login): `GET /api/comentarios[?escenario=R1]`, `POST /api/comentarios`, `PATCH /api/comentarios/:id`.
+Se guardan en **Cloudflare D1** (base `sullairgo-star`, tabla `comentarios`; esquema en `migrations/`).
+
+### Administración
+
+Separada de la interfaz de testers: no hay ningún enlace ni acción de admin en el hub ni en las pantallas.
+
+- Se entra solo con el **link de administración** (`/admin?clave=<clave>`), que deja el navegador en modo admin por 30 días con una cookie propia. Sin esa cookie, `/admin` responde "No encontrado".
+- `/admin`: todos los comentarios en una tabla, filtro abiertos / resueltos / todos, marcar resuelto o reabrir, borrar y **descargar CSV**.
+- "Salir del modo admin" borra la cookie de admin.
+- El repo solo guarda el hash de la clave (`ADMIN_TOKEN_HASH` en `wrangler.jsonc`). Para cambiarla: `npm run hash -- "NuevaClave"`, pegar el resultado y desplegar; el link anterior deja de funcionar.
+
+API: `GET /api/comentarios[?escenario=R1]` y `POST /api/comentarios` con la sesión de testers; `PATCH` y `DELETE /api/comentarios/:id` solo en modo admin.
 
 Para leerlos desde la terminal:
 
@@ -67,13 +76,13 @@ public/
   app/app.js             render, mapa, reprogramación y botón de demo
   app/app.css            estilos mobile first (desktop desde 900 px)
   app/comentarios.js     bolita y panel de comentarios de testers
-  comentarios.html       todos los comentarios (tabla)
+  admin.html             administración de comentarios (solo con el link de admin)
   index.html             hub de escenarios (lee app/data.js)
   login.html             pantalla de acceso
   board.html             board de Claude Design (referencia)
   vendor/leaflet/        Leaflet 1.9.4
   assets/                tokens SullairGo, tipografías, logo, íconos, manifest
-src/index.js             Worker: login, sesión, ruteo de /escenarios/<código> y API de comentarios
+src/index.js             Worker: login, modo admin, ruteo de /escenarios/<código> y API de comentarios
 migrations/              esquema de D1
 design/                  export original del board (Claude Design)
 scripts/

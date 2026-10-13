@@ -13,7 +13,9 @@
   },
   "vars": {
     // SHA-256 de la contraseña de acceso. Para cambiarla: npm run hash -- "NuevaContraseña"
-    "PASSWORD_HASH": "41d37eba3025c47f5586f470b2398ce170e7ccdb53adbdc0c4708100c4061102"
+    "PASSWORD_HASH": "41d37eba3025c47f5586f470b2398ce170e7ccdb53adbdc0c4708100c4061102",
+    // SHA-256 de la clave del link de administración (/admin?clave=…). Para cambiarla: npm run hash -- "NuevaClave"
+    "ADMIN_TOKEN_HASH": "7a1896ea7d722b240933490b668e9deded078c39a7adb1f13a2212388be509eb"
   },
   // Comentarios de los testers (tabla en migrations/).
   "d1_databases": [

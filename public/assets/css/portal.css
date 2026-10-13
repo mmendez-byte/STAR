@@ -215,7 +215,6 @@ a:hover { color: var(--sgo-midnight-green-hover); }
   object-fit: cover;
   object-position: top;
 }
-.scenario-link__thumb--desktop img { object-position: top left; }
 .scenario-link__body {
   flex: 1;
   display: flex;
@@ -263,8 +262,7 @@ a:hover { color: var(--sgo-midnight-green-hover); }
     box-shadow: 0 8px 30px rgba(0, 0, 0, .28);
     transition: transform .3s ease;
   }
-  .scenario-link__thumb--mobile img { width: 64%; height: 400px; }
-  .scenario-link__thumb--desktop img { width: 92%; height: 200px; }
+  .scenario-link__thumb img { width: 64%; height: 400px; }
   .scenario-link:hover .scenario-link__thumb img { transform: translateY(-8px); }
   .scenario-link__body { padding: var(--space-4); }
   .hub__board { display: inline-flex; margin-top: var(--space-8); }

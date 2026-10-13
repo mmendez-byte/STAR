@@ -6,6 +6,8 @@
 const COOKIE = "star_session";
 const SESSION_DAYS = 7;
 const PUBLIC_PREFIXES = ["/assets/"];
+// Cada escenario es la misma app (public/visita.html); el código va en la URL.
+const SCENARIO_PATH = /^\/escenarios\/[\w-]+\/?$/;
 
 export default {
   async fetch(request, env) {
@@ -31,7 +33,8 @@ export default {
       return redirect(url, `/login${next}`);
     }
 
-    const response = await env.ASSETS.fetch(request);
+    const asset = SCENARIO_PATH.test(pathname) ? new Request(new URL("/visita", url), request) : request;
+    const response = await env.ASSETS.fetch(asset);
     const headers = new Headers(response.headers);
     headers.set("Cache-Control", "private, no-store");
     headers.set("X-Robots-Tag", "noindex, nofollow");

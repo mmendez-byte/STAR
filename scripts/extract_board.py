@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Genera las páginas de escenarios a partir del export de Claude Design.
+"""Desempaqueta el export de Claude Design: assets, tokens y board de referencia.
 
 Uso:
     python3 scripts/extract_board.py design/Seguimiento_de_visita_SullairGo.html
@@ -10,8 +10,8 @@ manifest y el markup del board en un template JSON. Este script:
   1. Desempaqueta logo, mapas y tipografías a public/assets/.
   2. Reemplaza los componentes del design system (<x-import> Badge/Button)
      por HTML estático con las clases de sgo-components.css.
-  3. Escribe una página por escenario (public/escenarios/<id>.html),
-     el board completo (public/board.html) y el hub (public/index.html).
+  3. Escribe el board completo (public/board.html), que queda como
+     referencia de diseño. La app real está en public/visita.html + public/app/.
 
 Cuando llegue una nueva versión del board, se reemplaza el archivo en
 design/ y se vuelve a correr este script.
@@ -40,24 +40,6 @@ FONT_FILES = {
     ("Nunito Sans", "latin"): "nunito-sans-latin.woff2",
     ("Nunito Sans", "latin-ext"): "nunito-sans-latin-ext.woff2",
 }
-
-SCENARIO_ORDER = ["1a", "1b", "1c", "2a"]
-
-BOARD_GROUP = "Seguimiento el día de la visita"
-
-# Escenarios armados a mano (no vienen del board). Comparten la plantilla
-# design/escenarios/reprogramacion.html y cambian el estado inicial.
-# Fechas ilusorias: la visita original es el jueves 15/10/2026.
-REPROGRAMACION = "design/escenarios/reprogramacion.html"
-EXTRA_GROUP = "Reprogramación y cancelación"
-EXTRA_SCENARIOS = [
-    {"id": "R1", "title": "Nunca reprogramó", "state": {"used": 0, "date": "2026-10-15", "slot": "manana", "status": "programada"}},
-    {"id": "R2", "title": "Reprogramó una vez", "state": {"used": 1, "date": "2026-10-19", "slot": "manana", "status": "reprogramada"}},
-    {"id": "R3", "title": "Reprogramó dos veces", "state": {"used": 2, "date": "2026-10-21", "slot": "tarde", "status": "reprogramada"}},
-    {"id": "R4", "title": "Cancela después de dos reprogramaciones", "state": {"used": 2, "date": "2026-10-22", "slot": "tarde", "status": "dia-siguiente"}},
-    {"id": "R5", "title": "Cancela Sullair", "state": {"used": 0, "date": "2026-10-15", "slot": "manana", "status": "cancelada-sullair"}},
-]
-
 
 def read_bundle(path):
     src = Path(path).read_text(encoding="utf-8")
@@ -177,57 +159,6 @@ def write_tokens_css(template, font_rules):
     )
 
 
-def extract_scenarios(body):
-    scenarios = []
-    for sid in SCENARIO_ORDER:
-        start = body.find(f'<div id="{sid}"')
-        if start < 0:
-            sys.exit(f"No se encontró el escenario {sid} en el board")
-        end = balanced_div(body, start)
-        block = body[start:end]
-        inner_start = block.find(">") + 1
-        inner = block[inner_start : block.rfind("</div>")]
-
-        # Primer hijo: la etiqueta "1a · Título" del board. Se reemplaza por la barra superior.
-        label_start = inner.find("<div")
-        label_end = balanced_div(inner, label_start)
-        label = inner[label_start:label_end]
-        title = re.findall(r"<span[^>]*>([^<]+)</span>", label)[-1].strip()
-        content = inner[label_end:].strip()
-
-        device = "desktop" if "width:1180px" in content else "mobile"
-        if device == "mobile":
-            content = content.replace(
-                'style="width:414px;box-sizing:border-box;background:#0e1213;border-radius:46px',
-                'class="device" style="width:414px;box-sizing:border-box;background:#0e1213;border-radius:46px',
-                1,
-            )
-            content = content.replace(
-                'style="width:390px;background:var(--surface-page);border-radius:34px',
-                'class="device-screen" style="width:390px;background:var(--surface-page);border-radius:34px',
-                1,
-            )
-            content = re.sub(
-                r'<div style="(position:relative;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;opacity:\.92)">(\s*<span>9:41</span>)',
-                r'<div class="device-statusbar" style="\1">\2',
-                content,
-                count=1,
-            )
-            content = re.sub(
-                r'<div style="width:390px;background:#fff;border:1\.5px dashed',
-                r'<div class="design-note" style="width:390px;background:#fff;border:1.5px dashed',
-                content,
-            )
-        else:
-            content = content.replace(
-                '<div style="width:1180px;max-width:100%',
-                '<div class="browser" style="width:1180px;max-width:100%',
-                1,
-            )
-        scenarios.append({"id": sid, "title": title, "device": device, "group": BOARD_GROUP, "content": content})
-    return scenarios
-
-
 HEAD = """<!doctype html>
 <html lang="es">
 <head>
@@ -256,106 +187,13 @@ HOME_BUTTON = """<a class="topbar__home" href="/" aria-label="Volver a escenario
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
   </a>"""
 
-DEVICE_LABEL = {"mobile": "Mobile", "desktop": "Desktop"}
-
-
-def scenario_page(sc, prev_sc, next_sc):
-    center = HOME_BUTTON + f"""
-  <nav class="pager" aria-label="Escenarios">
-    <a class="pager__step" href="/escenarios/{prev_sc['id']}" aria-label="Escenario anterior: {html.escape(prev_sc['title'])}" data-key="ArrowLeft">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-    </a>
-    <div class="pager__current"><span class="code">{sc['id']}</span><span class="pager__title">{html.escape(sc['title'])}</span></div>
-    <a class="pager__step" href="/escenarios/{next_sc['id']}" aria-label="Escenario siguiente: {html.escape(next_sc['title'])}" data-key="ArrowRight">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
-    </a>
-  </nav>"""
-    return (
-        HEAD.format(title=f"{sc['id']} · {html.escape(sc['title'])} · STAR")
-        + '<body class="page page--scenario">\n'
-        + TOPBAR.format(center=center)
-        + f'<main class="stage stage--{sc["device"]}">\n{sc["content"]}\n</main>\n'
-        + '<script src="/assets/js/pager.js" defer></script>\n</body>\n</html>\n'
-    )
-
-
 def board_page(body):
-    center = HOME_BUTTON + '\n  <div class="pager pager--static"><div class="pager__current"><span class="pager__title">Board completo</span></div></div>'
+    center = HOME_BUTTON + '\n  <div class="pager pager--static"><div class="pager__current"><span class="pager__title">Board de diseño</span></div></div>'
     return (
-        HEAD.format(title="Board completo · STAR")
+        HEAD.format(title="Board de diseño · STAR")
         + '<body class="page page--board">\n'
         + TOPBAR.format(center=center)
         + f'<main class="board-canvas">\n{body}\n</main>\n</body>\n</html>\n'
-    )
-
-
-def short_title(title):
-    # En el hub el dispositivo ya va en la meta: "Desktop · Técnico en camino" -> "Técnico en camino".
-    return re.sub(r"^(Desktop|Mobile) · ", "", title)
-
-
-def load_extra_scenarios():
-    template = (ROOT / REPROGRAMACION).read_text(encoding="utf-8")
-    template = re.sub(r"^\s*<!--.*?-->\s*", "", template, flags=re.S).strip()
-    scenarios = []
-    for extra in EXTRA_SCENARIOS:
-        state = html.escape(json.dumps(extra["state"]), quote=True)
-        content = template.replace("__ID__", extra["id"]).replace("__STATE__", state)
-        scenarios.append({**extra, "device": "mobile", "interactive": True, "group": EXTRA_GROUP, "content": content})
-    return scenarios
-
-
-def hub_page(scenarios):
-    sections = []
-    groups = list(dict.fromkeys(sc["group"] for sc in scenarios))
-    for g, group in enumerate(groups):
-        items = [hub_item(i, sc) for i, sc in enumerate(s for s in scenarios if s["group"] == group)]
-        sections.append(
-            f"""  <section class="hub__section" aria-labelledby="grupo-{g}">
-    <h2 id="grupo-{g}">{html.escape(group)}</h2>
-    <ul class="scenario-grid" role="list">
-""" + "\n".join(items) + """
-    </ul>
-  </section>"""
-        )
-    return (
-        HEAD.format(title="Proyecto STAR · SullairGo")
-        + '<body class="page page--hub">\n'
-        + TOPBAR.format(center="")
-        + """<main class="hub">
-  <div class="hub__header">
-    <p class="eyebrow">SullairGo · Seguimiento de visita técnica</p>
-    <h1>Escenarios</h1>
-  </div>
-"""
-        + "\n".join(sections)
-        + """
-  <a class="hub__board" href="/board">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-    Ver board completo
-  </a>
-</main>
-</body>
-</html>
-"""
-    )
-
-
-def hub_item(i, sc):
-    return (
-        f"""    <li style="--i:{i}">
-      <a class="scenario-link" href="/escenarios/{sc['id']}">
-        <span class="scenario-link__thumb scenario-link__thumb--{sc['device']}"><img src="/assets/img/thumbs/{sc['id']}.jpg" alt="" loading="lazy"></span>
-        <span class="scenario-link__body">
-          <span class="code">{sc['id']}</span>
-          <span class="scenario-link__text">
-            <span class="scenario-link__title">{html.escape(short_title(sc['title']))}</span>
-            <span class="scenario-link__meta">{DEVICE_LABEL[sc['device']]}{' · interactivo' if sc.get('interactive') else ''}</span>
-          </span>
-          <svg class="scenario-link__arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </span>
-      </a>
-    </li>"""
     )
 
 
@@ -363,9 +201,8 @@ def main():
     if len(sys.argv) != 2:
         sys.exit(__doc__)
     manifest, template = read_bundle(sys.argv[1])
-    for d in ["css", "fonts", "img", "img/thumbs", "js"]:
+    for d in ["css", "fonts", "img", "img/thumbs"]:
         (ASSETS / d).mkdir(parents=True, exist_ok=True)
-    (PUBLIC / "escenarios").mkdir(parents=True, exist_ok=True)
 
     urls, font_rules = write_assets(manifest, template)
     write_tokens_css(template, font_rules)
@@ -376,28 +213,8 @@ def main():
         body = body.replace(uuid, url)
     body = replace_ds_components(body)
 
-    scenarios = load_extra_scenarios() + extract_scenarios(body)
-    ids = {sc["id"] for sc in scenarios}
-    for old in (PUBLIC / "escenarios").glob("*.html"):
-        if old.stem not in ids:
-            old.unlink()
-    for old in (ASSETS / "img" / "thumbs").glob("*.jpg"):
-        if old.stem not in ids:
-            old.unlink()
-    for i, sc in enumerate(scenarios):
-        prev_sc = scenarios[i - 1]
-        next_sc = scenarios[(i + 1) % len(scenarios)]
-        (PUBLIC / "escenarios" / f"{sc['id']}.html").write_text(scenario_page(sc, prev_sc, next_sc), encoding="utf-8")
-
     (PUBLIC / "board.html").write_text(board_page(body), encoding="utf-8")
-    (PUBLIC / "index.html").write_text(hub_page(scenarios), encoding="utf-8")
-    (PUBLIC / "escenarios.json").write_text(
-        json.dumps([{k: sc[k] for k in ("id", "title", "device")} for sc in scenarios], ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    for sc in scenarios:
-        print(f"  {sc['id']}  {sc['device']:<8} {sc['title']}")
-    print(f"OK: {len(scenarios)} escenarios + board + hub en {PUBLIC.relative_to(ROOT)}/")
+    print(f"OK: assets, tokens y board en {PUBLIC.relative_to(ROOT)}/")
 
 
 if __name__ == "__main__":

@@ -1,14 +1,17 @@
 # Proyecto STAR · SullairGo
 
-Portal privado para recorrer los escenarios de la pantalla de **seguimiento de visita técnica** de SullairGo (proyecto STAR, Linear P-SUL-33). El cliente recibe un link por WhatsApp y ve el estado de la visita sin necesidad de loguearse; acá se revisan esas pantallas con **datos ilusorios**.
+Prototipo navegable de la pantalla de **seguimiento de visita técnica** de SullairGo (proyecto STAR, Linear P-SUL-33). El cliente recibe un link por WhatsApp y ve el estado de la visita sin necesidad de loguearse; acá se recorre esa experiencia con **datos ilusorios**, como si la plataforma estuviera funcionando.
 
-- **Mobile first**: en el celular cada escenario se ve a pantalla completa, como lo vería el cliente. En pantallas anchas aparece dentro del marco de teléfono.
+- **Una sola app responsive.** En el celular se ve y se usa como una app a pantalla completa (se puede agregar a la pantalla de inicio). En desktop, layout ancho con el mapa protagonista y los paneles a la derecha.
+- **Mapa real**: Leaflet con calles de OpenStreetMap (estilo CARTO Voyager). El recorrido del técnico se calcula por calles con el servicio público de OSRM; si no responde, se dibuja una línea directa.
 - **Acceso con contraseña única** (seguridad básica, sin usuarios). La sesión dura 7 días.
 - Corre en **Cloudflare Workers** con assets estáticos. No hay build: lo que está en `public/` es lo que se publica.
 
 ## Escenarios
 
-**Reprogramación y cancelación** (interactivos, plantilla `design/escenarios/reprogramacion.html`):
+Cada escenario es la misma app en otro estado: `/escenarios/<código>`. Un botón flotante abajo a la derecha permite cambiar de escenario sin salir de la app.
+
+**Programación y reprogramación** (interactivos):
 
 | Código | Escenario | Estado inicial |
 |---|---|---|
@@ -18,9 +21,9 @@ Portal privado para recorrer los escenarios de la pantalla de **seguimiento de v
 | R4 | Cancela después de dos reprogramaciones | Pasó al día hábil siguiente (jueves 22/10) y quedó fija |
 | R5 | Cancela Sullair | Visita cancelada por Sullair: el cliente elige nueva fecha |
 
-**Seguimiento el día de la visita** (del board de Claude Design): 1a Técnico en camino · 1b En sitio, 3 equipos · 1c Visita finalizada · 2a Vista desktop. Además está el **board completo** en `/board`.
+**El día de la visita**: 1a Técnico en camino (mapa con el recorrido) · 1b En sitio, 3 equipos · 1c Visita finalizada.
 
-Cada escenario arranca en su estado y se puede recorrer: desde R1 se llega a R4 reprogramando dos veces y cancelando. "Reiniciar escenario" lo devuelve al estado inicial.
+Desde R1 se llega a R4 reprogramando dos veces y cancelando. "Reiniciar escenario" (en el botón flotante) lo devuelve al estado inicial. El board original de Claude Design queda como referencia en `/board`.
 
 ### Regla de reprogramación (en prueba)
 
@@ -41,16 +44,23 @@ Supuestos a validar con Sullair:
 ## Estructura
 
 ```
-design/
-  Seguimiento_de_visita_SullairGo.html   export original del board (Claude Design)
-  escenarios/reprogramacion.html         plantilla de R1–R5 (fuera del board)
+public/
+  visita.html            la app (un solo HTML para todos los escenarios)
+  app/data.js            datos ilusorios: escenarios, equipos, planta, técnico
+  app/app.js             render, mapa, reprogramación y botón de demo
+  app/app.css            estilos mobile first (desktop desde 900 px)
+  index.html             hub de escenarios (lee app/data.js)
+  login.html             pantalla de acceso
+  board.html             board de Claude Design (referencia)
+  vendor/leaflet/        Leaflet 1.9.4
+  assets/                tokens SullairGo, tipografías, logo, íconos, manifest
+src/index.js             Worker: login, sesión y ruteo de /escenarios/<código>
+design/                  export original del board (Claude Design)
 scripts/
-  extract_board.py                       genera public/ a partir de design/
-  thumbs.mjs                             genera las miniaturas del hub (Playwright)
-  hash-password.mjs                      hash de la contraseña de acceso
-src/index.js                             Worker: login, sesión y salida
-public/                                  sitio estático (generado + assets)
-wrangler.jsonc                           configuración de Cloudflare
+  extract_board.py       desempaqueta el export: assets, tokens y board
+  thumbs.mjs             miniaturas del hub (Playwright)
+  hash-password.mjs      hash de la contraseña de acceso
+wrangler.jsonc           configuración de Cloudflare
 ```
 
 ## Desarrollo local
@@ -60,18 +70,13 @@ npm install
 npm run dev          # http://localhost:8787
 ```
 
-## Actualizar el board
-
-Cuando llega una nueva versión del diseño:
+Para sumar o cambiar un escenario se edita `public/app/data.js` (y la lógica en `app.js` si es un estado nuevo). Después se regeneran las miniaturas del hub, con `npm run dev` corriendo y Playwright instalado:
 
 ```bash
-cp ~/Downloads/Seguimiento_de_visita_SullairGo.html design/
-npm run build:escenarios
-# miniaturas del hub (con npm run dev corriendo y Playwright instalado):
 STAR_PASSWORD='…' node scripts/thumbs.mjs
 ```
 
-Si el board trae un componente nuevo del design system (`<x-import …>`), el script avisa y hay que agregarlo en `replace_ds_components()` y en `public/assets/css/sgo-components.css`.
+Si llega una nueva versión del board de diseño: `cp …/Seguimiento_de_visita_SullairGo.html design/ && npm run build:board` (actualiza tokens, tipografías, logo y `/board`).
 
 ## Contraseña
 

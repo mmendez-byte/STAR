@@ -405,7 +405,7 @@
     paintDemoState();
   }
 
-  // ── Mapa real (Leaflet + OpenStreetMap / CARTO) ───────────
+  // ── Mapa real (Leaflet + OpenStreetMap) ───────────────────
   var map = null;
   var routeInfo = null;
   var site = [D.SITE.lat, D.SITE.lng];
@@ -435,10 +435,10 @@
       tap: false,
       attributionControl: true,
     });
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-      subdomains: "abcd",
+    // Teselas estándar de OpenStreetMap: no piden clave (CARTO pasó a exigirla).
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
     map.attributionControl.setPrefix(false);
     if (!isMobile()) map.zoomControl = L.control.zoom({ position: "topright" }).addTo(map);

@@ -3,7 +3,7 @@
 Prototipo navegable de la pantalla de **seguimiento de visita técnica** de SullairGo (proyecto STAR, Linear P-SUL-33). El cliente recibe un link por WhatsApp y ve el estado de la visita sin necesidad de loguearse; acá se recorre esa experiencia con **datos ilusorios**, como si la plataforma estuviera funcionando.
 
 - **Una sola app responsive.** En el celular se ve y se usa como una app a pantalla completa (se puede agregar a la pantalla de inicio). En desktop, layout ancho con el mapa protagonista y los paneles a la derecha.
-- **Mapa real**: Leaflet con calles de OpenStreetMap (estilo CARTO Voyager). El recorrido del técnico se calcula por calles con el servicio público de OSRM; si no responde, se dibuja una línea directa.
+- **Mapa real**: Leaflet con las teselas estándar de OpenStreetMap (sin clave; para producción conviene un proveedor con contrato). El recorrido del técnico se calcula por calles con el servicio público de OSRM; si no responde, se dibuja una línea directa.
 - **Acceso con contraseña única** (seguridad básica, sin usuarios). La sesión dura 7 días.
 - Corre en **Cloudflare Workers** con assets estáticos. No hay build: lo que está en `public/` es lo que se publica.
 

@@ -150,6 +150,8 @@ button { font: inherit; }
 .map { position: absolute; inset: 0; z-index: 0; }
 .leaflet-container { font-family: var(--font-body); background: #e9e8e6; }
 .leaflet-control-attribution { font-size: 10px; }
+/* Suaviza el estilo de OpenStreetMap para que no compita con la marca. */
+.leaflet-tile-pane { filter: saturate(.7) contrast(.95) brightness(1.02); }
 .map-block.is-expanded .leaflet-top.leaflet-right { top: calc(56px + env(safe-area-inset-top)); }
 .map__chip, .map__legend span, .map__expand, .map__close {
   background: var(--sgo-white);

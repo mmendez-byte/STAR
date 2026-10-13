@@ -58,6 +58,10 @@
   // ── Fechas (escenarios de agenda) ─────────────────────────
   var MAX = 2;
   var SLOTS = { manana: "9 a 12 h", tarde: "14 a 17 h" };
+  // Franjas elegidas por el cliente: una o ambas (al menos una).
+  function slotsLabel(slots) {
+    return slots.length > 1 ? "9 a 17 h" : SLOTS[slots[0]];
+  }
   var DATE_OPTIONS = 4;
   var weekday = new Intl.DateTimeFormat("es-AR", { weekday: "long" });
   var dayMonth = new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "long" });
@@ -92,7 +96,8 @@
   function loadState() {
     try {
       var saved = JSON.parse(sessionStorage.getItem(storageKey));
-      if (saved && typeof saved.used === "number" && saved.date && SLOTS[saved.slot] && saved.status) return saved;
+      var validSlots = saved && Array.isArray(saved.slots) && saved.slots.length && saved.slots.every(function (k) { return SLOTS[k]; });
+      if (validSlots && typeof saved.used === "number" && saved.date && saved.status) return saved;
     } catch (e) {}
     return Object.assign({}, sc.state);
   }
@@ -177,7 +182,7 @@
         {
           icon: "clock",
           label: "Fecha",
-          value: capitalize(day(date)) + " · " + SLOTS[state.slot],
+          value: capitalize(day(date)) + " · " + slotsLabel(state.slots),
           cls: state.status === "cancelada-sullair" ? "is-cancelled" : "",
           bind: "visit-date",
         },
@@ -539,11 +544,11 @@
     '<div class="sheet__head"><h2 id="sheet-title" data-el="sheet-title"></h2>' +
     '<span class="quota" data-el="sheet-quota"><span class="quota__dots" aria-hidden="true"><i></i><i></i></span><span data-el="sheet-quota-text"></span></span></div>' +
     '<fieldset class="field" data-step="choose"><legend>Nueva fecha</legend><div class="options options--dates" data-el="date-options"></div></fieldset>' +
-    '<div class="notice notice--warning" data-step="forced" hidden>' + icon("calendar") + '<span>La visita pasa al <strong data-el="forced-day"></strong>. Elegí la franja que te queda mejor.</span></div>' +
-    '<fieldset class="field"><legend>Franja horaria</legend><div class="options options--slots">' +
-    '<label class="option"><input type="radio" name="slot" value="manana"><span><strong>Mañana</strong>9 a 12 h</span></label>' +
-    '<label class="option"><input type="radio" name="slot" value="tarde"><span><strong>Tarde</strong>14 a 17 h</span></label>' +
-    "</div></fieldset>" +
+    '<div class="notice notice--warning" data-step="forced" hidden>' + icon("calendar") + '<span>La visita pasa al <strong data-el="forced-day"></strong>. Elegí en qué franja pueden recibirnos.</span></div>' +
+    '<fieldset class="field" aria-describedby="slots-hint"><legend>Franja horaria</legend><div class="options options--slots">' +
+    '<label class="option option--check"><input type="checkbox" name="slots" value="manana"><span><strong>Mañana</strong>9 a 12 h</span></label>' +
+    '<label class="option option--check"><input type="checkbox" name="slots" value="tarde"><span><strong>Tarde</strong>14 a 17 h</span></label>' +
+    '</div><p class="field__hint" id="slots-hint" data-el="slots-hint">Podés marcar una o las dos.</p></fieldset>' +
     '<div class="sheet__actions">' +
     '<button type="submit" class="sgo-btn sgo-btn--primary sgo-btn--lg" data-el="confirm">Confirmar nueva fecha</button>' +
     '<button type="button" class="sgo-btn sgo-btn--ghost sgo-btn--md" data-action="close">Volver</button>' +
@@ -644,7 +649,6 @@
     var confirm = el("confirm");
     if (forced) {
       confirm.textContent = "Pasar al " + day(nextBusinessDay(date));
-      confirm.disabled = false;
     } else {
       var options = el("date-options");
       options.innerHTML = "";
@@ -657,31 +661,46 @@
         );
       }
       confirm.textContent = "Confirmar nueva fecha";
-      confirm.disabled = true;
     }
-    form.querySelector('input[name="slot"][value="' + state.slot + '"]').checked = true;
+    form.querySelectorAll('input[name="slots"]').forEach(function (box) {
+      box.checked = state.slots.indexOf(box.value) !== -1;
+    });
+    validateSheet();
     openLayer(el("sheet"), trigger);
   }
 
-  form.addEventListener("change", function (e) {
-    if (e.target.name === "date") el("confirm").disabled = false;
-  });
+  function checkedSlots() {
+    return Array.prototype.map.call(form.querySelectorAll('input[name="slots"]:checked'), function (box) {
+      return box.value;
+    });
+  }
+  // Se puede confirmar con fecha (salvo que sea forzada) y al menos una franja.
+  function validateSheet() {
+    var dateOk = sheetMode === "forzada" || !!form.querySelector('input[name="date"]:checked');
+    var slotsOk = checkedSlots().length > 0;
+    var hint = el("slots-hint");
+    hint.textContent = slotsOk ? "Podés marcar una o las dos." : "Elegí al menos una franja.";
+    hint.classList.toggle("is-error", !slotsOk);
+    el("confirm").disabled = !(dateOk && slotsOk);
+  }
+  form.addEventListener("change", validateSheet);
   form.addEventListener("submit", function (e) {
     e.preventDefault();
-    var slotValue = form.querySelector('input[name="slot"]:checked').value;
+    var slots = checkedSlots();
+    if (!slots.length) return validateSheet();
     if (sheetMode === "forzada") {
-      state = { used: state.used, date: toIso(nextBusinessDay(parse(state.date))), slot: slotValue, status: "dia-siguiente" };
+      state = { used: state.used, date: toIso(nextBusinessDay(parse(state.date))), slots: slots, status: "dia-siguiente" };
       flash = null;
     } else {
       var picked = form.querySelector('input[name="date"]:checked');
       if (!picked) return;
-      var label = day(parse(picked.value)) + ", de " + SLOTS[slotValue] + ".";
+      var label = day(parse(picked.value)) + ", de " + slotsLabel(slots) + (slots.length > 1 ? " (mañana o tarde)." : ".");
       if (sheetMode === "sullair") {
-        state = { used: state.used, date: picked.value, slot: slotValue, status: "programada" };
+        state = { used: state.used, date: picked.value, slots: slots, status: "programada" };
         flash = { title: "Nueva fecha confirmada", text: "Te esperamos el " + label + " Este cambio no cuenta como reprogramación." };
       } else {
         var used = state.used + 1;
-        state = { used: used, date: picked.value, slot: slotValue, status: "reprogramada" };
+        state = { used: used, date: picked.value, slots: slots, status: "reprogramada" };
         flash = { title: "Visita reprogramada", text: "Quedó para el " + label + (used >= MAX ? " Ya no quedan reprogramaciones." : " Te avisamos por WhatsApp.") };
       }
     }

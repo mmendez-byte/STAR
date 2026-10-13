@@ -497,6 +497,27 @@ button { font: inherit; }
 .option:hover span { border-color: var(--sgo-medium-grey); }
 .option input:checked + span { border-color: var(--sgo-midnight-green); background: var(--sgo-info-bg); }
 .option input:focus-visible + span { outline: 3px solid var(--sgo-orange); outline-offset: 2px; }
+/* Franjas: casilla visible para que se entienda que se pueden marcar las dos. */
+.option--check span { position: relative; padding-right: 48px; }
+.option--check span::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  width: 20px;
+  height: 20px;
+  margin-top: -10px;
+  border: 1.5px solid var(--sgo-medium-grey);
+  border-radius: 6px;
+  background: var(--sgo-white) center / 14px no-repeat;
+}
+.option--check input:checked + span::after {
+  border-color: var(--sgo-midnight-green);
+  background-color: var(--sgo-midnight-green);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5 9-11'/%3E%3C/svg%3E");
+}
+.field__hint { margin: 8px 0 0; font-size: 12px; color: var(--text-muted); }
+.field__hint.is-error { font-weight: 700; color: var(--sgo-error); }
 
 /* ── Control de la demo ───────────────────────────────────── */
 .demo__fab {

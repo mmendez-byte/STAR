@@ -1,7 +1,27 @@
 [
   {
-    "id": "0a",
-    "title": "Visita programada · reprogramación",
+    "id": "R1",
+    "title": "Nunca reprogramó",
+    "device": "mobile"
+  },
+  {
+    "id": "R2",
+    "title": "Reprogramó una vez",
+    "device": "mobile"
+  },
+  {
+    "id": "R3",
+    "title": "Reprogramó dos veces",
+    "device": "mobile"
+  },
+  {
+    "id": "R4",
+    "title": "Cancela después de dos reprogramaciones",
+    "device": "mobile"
+  },
+  {
+    "id": "R5",
+    "title": "Cancela Sullair",
     "device": "mobile"
   },
   {

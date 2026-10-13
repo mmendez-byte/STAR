@@ -164,9 +164,17 @@ a:hover { color: var(--sgo-midnight-green-hover); }
   line-height: var(--leading-tight);
   color: var(--sgo-midnight-green);
 }
+.hub__section { margin-top: var(--space-8); }
+.hub__section h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
 .scenario-grid {
   list-style: none;
-  margin: var(--space-6) 0 0;
+  margin: var(--space-3) 0 0;
   padding: 0;
   display: grid;
   grid-template-columns: 1fr;
@@ -243,7 +251,8 @@ a:hover { color: var(--sgo-midnight-green-hover); }
 @media (min-width: 640px) {
   .hub { padding: var(--space-12) var(--space-6) var(--space-16); }
   .hub h1 { font-size: var(--text-4xl); }
-  .scenario-grid { margin-top: var(--space-8); grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); gap: var(--space-6); }
+  .hub__section { margin-top: var(--space-10); }
+  .scenario-grid { margin-top: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); gap: var(--space-6); }
   .scenario-link { flex-direction: column; border-radius: var(--radius-lg); }
   .scenario-link:hover { transform: translateY(-4px); }
   .scenario-link__thumb { width: auto; height: 224px; }

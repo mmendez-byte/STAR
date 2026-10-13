@@ -43,15 +43,19 @@ FONT_FILES = {
 
 SCENARIO_ORDER = ["1a", "1b", "1c", "2a"]
 
-# Escenarios armados a mano (no vienen del board). Se insertan antes de los del board.
+BOARD_GROUP = "Seguimiento el día de la visita"
+
+# Escenarios armados a mano (no vienen del board). Comparten la plantilla
+# design/escenarios/reprogramacion.html y cambian el estado inicial.
+# Fechas ilusorias: la visita original es el jueves 15/10/2026.
+REPROGRAMACION = "design/escenarios/reprogramacion.html"
+EXTRA_GROUP = "Reprogramación y cancelación"
 EXTRA_SCENARIOS = [
-    {
-        "id": "0a",
-        "title": "Visita programada · reprogramación",
-        "device": "mobile",
-        "interactive": True,
-        "source": "design/escenarios/0a.html",
-    },
+    {"id": "R1", "title": "Nunca reprogramó", "state": {"used": 0, "date": "2026-10-15", "slot": "manana", "status": "programada"}},
+    {"id": "R2", "title": "Reprogramó una vez", "state": {"used": 1, "date": "2026-10-19", "slot": "manana", "status": "reprogramada"}},
+    {"id": "R3", "title": "Reprogramó dos veces", "state": {"used": 2, "date": "2026-10-21", "slot": "tarde", "status": "reprogramada"}},
+    {"id": "R4", "title": "Cancela después de dos reprogramaciones", "state": {"used": 2, "date": "2026-10-22", "slot": "tarde", "status": "dia-siguiente"}},
+    {"id": "R5", "title": "Cancela Sullair", "state": {"used": 0, "date": "2026-10-15", "slot": "manana", "status": "cancelada-sullair"}},
 ]
 
 
@@ -220,7 +224,7 @@ def extract_scenarios(body):
                 '<div class="browser" style="width:1180px;max-width:100%',
                 1,
             )
-        scenarios.append({"id": sid, "title": title, "device": device, "content": content})
+        scenarios.append({"id": sid, "title": title, "device": device, "group": BOARD_GROUP, "content": content})
     return scenarios
 
 
@@ -291,19 +295,55 @@ def short_title(title):
 
 
 def load_extra_scenarios():
+    template = (ROOT / REPROGRAMACION).read_text(encoding="utf-8")
+    template = re.sub(r"^\s*<!--.*?-->\s*", "", template, flags=re.S).strip()
     scenarios = []
     for extra in EXTRA_SCENARIOS:
-        content = (ROOT / extra["source"]).read_text(encoding="utf-8")
-        content = re.sub(r"^\s*<!--.*?-->\s*", "", content, flags=re.S)
-        scenarios.append({**extra, "content": content.strip()})
+        state = html.escape(json.dumps(extra["state"]), quote=True)
+        content = template.replace("__ID__", extra["id"]).replace("__STATE__", state)
+        scenarios.append({**extra, "device": "mobile", "interactive": True, "group": EXTRA_GROUP, "content": content})
     return scenarios
 
 
 def hub_page(scenarios):
-    items = []
-    for i, sc in enumerate(scenarios):
-        items.append(
-            f"""    <li style="--i:{i}">
+    sections = []
+    groups = list(dict.fromkeys(sc["group"] for sc in scenarios))
+    for g, group in enumerate(groups):
+        items = [hub_item(i, sc) for i, sc in enumerate(s for s in scenarios if s["group"] == group)]
+        sections.append(
+            f"""  <section class="hub__section" aria-labelledby="grupo-{g}">
+    <h2 id="grupo-{g}">{html.escape(group)}</h2>
+    <ul class="scenario-grid" role="list">
+""" + "\n".join(items) + """
+    </ul>
+  </section>"""
+        )
+    return (
+        HEAD.format(title="Proyecto STAR · SullairGo")
+        + '<body class="page page--hub">\n'
+        + TOPBAR.format(center="")
+        + """<main class="hub">
+  <div class="hub__header">
+    <p class="eyebrow">SullairGo · Seguimiento de visita técnica</p>
+    <h1>Escenarios</h1>
+  </div>
+"""
+        + "\n".join(sections)
+        + """
+  <a class="hub__board" href="/board">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    Ver board completo
+  </a>
+</main>
+</body>
+</html>
+"""
+    )
+
+
+def hub_item(i, sc):
+    return (
+        f"""    <li style="--i:{i}">
       <a class="scenario-link" href="/escenarios/{sc['id']}">
         <span class="scenario-link__thumb scenario-link__thumb--{sc['device']}"><img src="/assets/img/thumbs/{sc['id']}.jpg" alt="" loading="lazy"></span>
         <span class="scenario-link__body">
@@ -316,29 +356,6 @@ def hub_page(scenarios):
         </span>
       </a>
     </li>"""
-        )
-    return (
-        HEAD.format(title="Proyecto STAR · SullairGo")
-        + '<body class="page page--hub">\n'
-        + TOPBAR.format(center="")
-        + """<main class="hub">
-  <div class="hub__header">
-    <p class="eyebrow">SullairGo · Seguimiento de visita técnica</p>
-    <h1>Escenarios</h1>
-  </div>
-  <ul class="scenario-grid" role="list">
-"""
-        + "\n".join(items)
-        + """
-  </ul>
-  <a class="hub__board" href="/board">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-    Ver board completo
-  </a>
-</main>
-</body>
-</html>
-"""
     )
 
 
@@ -360,6 +377,13 @@ def main():
     body = replace_ds_components(body)
 
     scenarios = load_extra_scenarios() + extract_scenarios(body)
+    ids = {sc["id"] for sc in scenarios}
+    for old in (PUBLIC / "escenarios").glob("*.html"):
+        if old.stem not in ids:
+            old.unlink()
+    for old in (ASSETS / "img" / "thumbs").glob("*.jpg"):
+        if old.stem not in ids:
+            old.unlink()
     for i, sc in enumerate(scenarios):
         prev_sc = scenarios[i - 1]
         next_sc = scenarios[(i + 1) % len(scenarios)]

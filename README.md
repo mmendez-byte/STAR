@@ -8,37 +8,42 @@ Portal privado para recorrer los escenarios de la pantalla de **seguimiento de v
 
 ## Escenarios
 
-| Código | Escenario | Origen |
+**Reprogramación y cancelación** (interactivos, plantilla `design/escenarios/reprogramacion.html`):
+
+| Código | Escenario | Estado inicial |
 |---|---|---|
-| 0a | Visita programada · reprogramación (interactivo) | Armado a mano: `design/escenarios/0a.html` |
-| 1a | Técnico en camino · 1 equipo | Board de Claude Design |
-| 1b | En sitio · 3 equipos | Board de Claude Design |
-| 1c | Visita finalizada | Board de Claude Design |
-| 2a | Desktop · Técnico en camino | Board de Claude Design |
+| R1 | Nunca reprogramó | Visita del jueves 15/10, 2 reprogramaciones disponibles |
+| R2 | Reprogramó una vez | Lunes 19/10, queda 1 reprogramación |
+| R3 | Reprogramó dos veces | Miércoles 21/10, sin reprogramaciones: solo puede cancelar |
+| R4 | Cancela después de dos reprogramaciones | Pasó al día hábil siguiente (jueves 22/10) y quedó fija |
+| R5 | Cancela Sullair | Visita cancelada por Sullair: el cliente elige nueva fecha |
 
-Además está el **board completo** en `/board`.
+**Seguimiento el día de la visita** (del board de Claude Design): 1a Técnico en camino · 1b En sitio, 3 equipos · 1c Visita finalizada · 2a Vista desktop. Además está el **board completo** en `/board`.
 
-### Regla de reprogramación (0a, en prueba)
+Cada escenario arranca en su estado y se puede recorrer: desde R1 se llega a R4 reprogramando dos veces y cancelando. "Reiniciar escenario" lo devuelve al estado inicial.
 
-- El cliente puede cancelar la fecha de la visita **hasta 2 veces**.
-- En la primera elige la nueva fecha (próximos 4 días hábiles) y la franja.
-- La segunda es la última: la visita pasa **obligatoriamente al día hábil siguiente**; solo elige la franja.
-- Después no hay más cambios: se muestra que tiene que contactar a su ejecutivo de cuenta.
-- La opción de reprogramar queda en segundo plano: link al pie de la pantalla, no botón.
+### Regla de reprogramación (en prueba)
+
+- El cliente puede **reprogramar hasta 2 veces**, eligiendo fecha (próximos 4 días hábiles) y franja.
+- **Antes de cada reprogramación aparece un modal** que avisa que reprogramar tiene un costo (reorganiza la agenda de los técnicos y demora a otros clientes) y que no es ilimitado. La acción principal del modal es *Mantener la fecha*.
+- Con las 2 reprogramaciones usadas, el link pasa a *Cancelar visita*: si cancela, la visita **pasa al día hábil siguiente** y ya no admite cambios.
+- Si **cancela Sullair**, el cliente elige la nueva fecha y **no se le descuenta** ninguna reprogramación. Es el único caso donde la acción es un botón principal.
+- Reprogramar queda en segundo plano: link al pie de la pantalla.
 
 Supuestos a validar con Sullair:
 
-1. "Día siguiente" se cuenta desde la fecha que se cancela y salta fines de semana.
-2. Aplica a preventivos (la coordinación de correctivos es otra).
-3. Cada cambio avisa a Servicio Técnico (los destinatarios ya están definidos del lado de Sullair). En la demo no se envía nada.
-4. Falta definir hasta cuándo se puede reprogramar (por ejemplo, hasta el día anterior).
+1. ¿Reprogramar tiene un cargo económico? Hoy el texto habla de costo operativo; si hay un monto, va en el modal.
+2. "Día siguiente" se cuenta desde la fecha que se cancela y salta fines de semana.
+3. Aplica a preventivos (la coordinación de correctivos es otra).
+4. Cada cambio avisa a Servicio Técnico (los destinatarios ya están definidos del lado de Sullair). En la demo no se envía nada.
+5. Falta definir hasta cuándo se puede reprogramar (por ejemplo, hasta el día anterior).
 
 ## Estructura
 
 ```
 design/
   Seguimiento_de_visita_SullairGo.html   export original del board (Claude Design)
-  escenarios/0a.html                     escenarios propios, fuera del board
+  escenarios/reprogramacion.html         plantilla de R1–R5 (fuera del board)
 scripts/
   extract_board.py                       genera public/ a partir de design/
   thumbs.mjs                             genera las miniaturas del hub (Playwright)
@@ -80,9 +85,9 @@ Se pega el resultado en `PASSWORD_HASH` y se despliega. Al cambiarla se cierran 
 
 ## Despliegue en Cloudflare
 
-**Opción A · conectar el repo (recomendada).** En el dashboard de Cloudflare: *Workers & Pages → Create → Import a repository*, elegir `mmendez-byte/STAR` y la rama a publicar. Cloudflare toma `wrangler.jsonc`, corre `npx wrangler deploy` y vuelve a desplegar en cada push. Queda en `https://sullairgo-star.<subdominio>.workers.dev`.
+**Conectado al repo (Workers Builds).** El Worker `sullairgo-star` se despliega solo en cada push a la rama principal. El nombre del proyecto en Cloudflare tiene que coincidir con `name` en `wrangler.jsonc`. Queda en `https://sullairgo-star.<subdominio>.workers.dev`.
 
-**Opción B · desde la terminal.**
+**Manual, desde la terminal.**
 
 ```bash
 npx wrangler login

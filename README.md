@@ -53,11 +53,12 @@ Se guardan en **Cloudflare D1** (base `sullairgo-star`, tabla `comentarios`; esq
 Separada de la interfaz de testers: no hay ningún enlace ni acción de admin en el hub ni en las pantallas.
 
 - Se entra solo con el **link de administración** (`/admin?clave=<clave>`), que deja el navegador en modo admin por 30 días con una cookie propia. Sin esa cookie, `/admin` responde "No encontrado".
-- `/admin`: todos los comentarios en una tabla, filtro abiertos / resueltos / todos, marcar resuelto o reabrir, borrar y **descargar CSV**.
+- `/admin`, pestaña **Comentarios de testers**: todos los comentarios en una tabla, filtro abiertos / resueltos / todos, marcar resuelto o reabrir, borrar y **descargar CSV**.
+- `/admin#notas`, pestaña **Notas de reuniones**: selector de fecha (con flechas y "Hoy"), título y notas libres por día, guardado automático y lista de las reuniones anotadas. Tabla `notas` en D1, una nota por fecha.
 - "Salir del modo admin" borra la cookie de admin.
 - El repo solo guarda el hash de la clave (`ADMIN_TOKEN_HASH` en `wrangler.jsonc`). Para cambiarla: `npm run hash -- "NuevaClave"`, pegar el resultado y desplegar; el link anterior deja de funcionar.
 
-API: `GET /api/comentarios[?escenario=R1]` y `POST /api/comentarios` con la sesión de testers; `PATCH` y `DELETE /api/comentarios/:id` solo en modo admin.
+API: `GET /api/comentarios[?escenario=R1]` y `POST /api/comentarios` con la sesión de testers; `PATCH` y `DELETE /api/comentarios/:id` y todo `/api/notas` solo en modo admin.
 
 Para leerlos desde la terminal:
 
@@ -76,7 +77,7 @@ public/
   app/app.js             render, mapa, reprogramación y botón de demo
   app/app.css            estilos mobile first (desktop desde 900 px)
   app/comentarios.js     bolita y panel de comentarios de testers
-  admin.html             administración de comentarios (solo con el link de admin)
+  admin.html             administración: comentarios y notas de reuniones (solo con el link de admin)
   index.html             hub de escenarios (lee app/data.js)
   login.html             pantalla de acceso
   board.html             board de Claude Design (referencia)

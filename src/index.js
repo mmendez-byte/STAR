@@ -61,6 +61,9 @@ export default {
 // PATCH  /api/comentarios/:id              { estado: "abierto" | "resuelto" }
 async function api(request, env, url, admin) {
   const { pathname } = url;
+  if (pathname === "/api/notas" || pathname.startsWith("/api/notas/")) {
+    return admin ? notesApi(request, env, url) : json({ error: "No encontrado." }, 404);
+  }
   if (pathname === "/api/comentarios" && request.method === "GET") {
     const escenario = url.searchParams.get("escenario");
     const query = escenario
@@ -103,6 +106,55 @@ async function api(request, env, url, admin) {
       .bind(body.estado, Number(byId[1]))
       .first();
     return row ? json({ comentario: row }) : json({ error: "El comentario no existe." }, 404);
+  }
+
+  return json({ error: "No encontrado." }, 404);
+}
+
+// ── Notas de reuniones (solo admin): una nota por fecha ─────
+// GET    /api/notas                lista (fecha, título, resumen), más recientes primero
+// GET    /api/notas/AAAA-MM-DD     la nota de ese día (vacía si no existe)
+// PUT    /api/notas/AAAA-MM-DD     { titulo, contenido }; si ambos quedan vacíos, se borra
+// DELETE /api/notas/AAAA-MM-DD
+async function notesApi(request, env, url) {
+  if (url.pathname === "/api/notas" && request.method === "GET") {
+    const { results } = await env.DB.prepare(
+      "SELECT fecha, titulo, substr(contenido, 1, 140) AS resumen, actualizado FROM notas ORDER BY fecha DESC LIMIT 500"
+    ).all();
+    return json({ notas: results });
+  }
+
+  const match = url.pathname.match(/^\/api\/notas\/(\d{4}-\d{2}-\d{2})$/);
+  if (!match) return json({ error: "Fecha inválida." }, 400);
+  const fecha = match[1];
+
+  if (request.method === "GET") {
+    const nota = await env.DB.prepare("SELECT * FROM notas WHERE fecha = ?1").bind(fecha).first();
+    return json({ nota: nota || { fecha, titulo: "", contenido: "", actualizado: null } });
+  }
+
+  if (request.method === "PUT") {
+    const body = await readJson(request);
+    if (!body) return json({ error: "No se pudo leer la nota." }, 400);
+    const titulo = String(body.titulo || "").trim().slice(0, 200);
+    const contenido = String(body.contenido || "").slice(0, 50000);
+    if (!titulo && !contenido.trim()) {
+      await env.DB.prepare("DELETE FROM notas WHERE fecha = ?1").bind(fecha).run();
+      return json({ nota: { fecha, titulo: "", contenido: "", actualizado: null } });
+    }
+    const nota = await env.DB.prepare(
+      "INSERT INTO notas (fecha, titulo, contenido) VALUES (?1, ?2, ?3) " +
+        "ON CONFLICT(fecha) DO UPDATE SET titulo = excluded.titulo, contenido = excluded.contenido, " +
+        "actualizado = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') RETURNING *"
+    )
+      .bind(fecha, titulo, contenido)
+      .first();
+    return json({ nota });
+  }
+
+  if (request.method === "DELETE") {
+    await env.DB.prepare("DELETE FROM notas WHERE fecha = ?1").bind(fecha).run();
+    return json({ borrada: fecha });
   }
 
   return json({ error: "No encontrado." }, 404);

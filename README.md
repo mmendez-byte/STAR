@@ -85,7 +85,16 @@ Se pega el resultado en `PASSWORD_HASH` y se despliega. Al cambiarla se cierran 
 
 ## Despliegue en Cloudflare
 
-**Conectado al repo (Workers Builds).** El Worker `sullairgo-star` se despliega solo en cada push a la rama principal. El nombre del proyecto en Cloudflare tiene que coincidir con `name` en `wrangler.jsonc`. Queda en `https://sullairgo-star.<subdominio>.workers.dev`.
+**Conectado al repo (Workers Builds).** El Worker `sullairgo-star` se despliega solo en cada push a la rama de producción. Configuración en *Workers & Pages → sullairgo-star → Settings → Builds*:
+
+| Campo | Valor |
+|---|---|
+| Git repository | `mmendez-byte/STAR` |
+| Production branch | `claude/ecstatic-davinci-dlge83` |
+| Build command | *(vacío)* |
+| Deploy command | `npx wrangler deploy` |
+
+El nombre del Worker en Cloudflare tiene que coincidir con `name` en `wrangler.jsonc`, o el build falla. La URL pública figura en la pestaña *Domains* del Worker.
 
 **Manual, desde la terminal.**
 

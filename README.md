@@ -27,7 +27,8 @@ Desde R1 se llega a R4 reprogramando dos veces y cancelando. "Reiniciar escenari
 
 ### Regla de reprogramación (en prueba)
 
-- El cliente puede **reprogramar hasta 2 veces**, eligiendo fecha (próximos 4 días hábiles) y franja: **mañana, tarde o ambas**, con al menos una marcada. Con las dos, la visita queda de 9 a 17 h.
+- El cliente puede **reprogramar hasta 2 veces** marcando su disponibilidad: **uno o varios días** (próximos 6 días hábiles) y **mañana, tarde o ambas** franjas. El criterio es al menos un día y al menos una franja.
+- Con un solo día, la nueva fecha queda confirmada en el momento. Con varios, queda "a confirmar" y Sullair elige día y franja; en la demo, la confirmación llega sola a los 4 segundos (toma el primer día y la primera franja marcados).
 - **Antes de cada reprogramación aparece un modal** que avisa que reprogramar tiene un costo (reorganiza la agenda de los técnicos y demora a otros clientes) y que no es ilimitado. La acción principal del modal es *Mantener la fecha*.
 - Con las 2 reprogramaciones usadas, el link pasa a *Cancelar visita*: si cancela, la visita **pasa al día hábil siguiente** y ya no admite cambios.
 - Si **cancela Sullair**, el cliente elige la nueva fecha y **no se le descuenta** ninguna reprogramación. Es el único caso donde la acción es un botón principal.

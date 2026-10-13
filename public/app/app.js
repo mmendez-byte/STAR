@@ -57,12 +57,13 @@
 
   // ── Fechas (escenarios de agenda) ─────────────────────────
   var MAX = 2;
-  var SLOTS = { manana: "9 a 12 h", tarde: "14 a 17 h" };
+  // Espacios no separables: las franjas y fechas no se cortan en dos renglones.
+  var SLOTS = { manana: "9\u00a0a\u00a012\u00a0h", tarde: "14\u00a0a\u00a017\u00a0h" };
   // Franjas elegidas por el cliente: una o ambas (al menos una).
   function slotsLabel(slots) {
-    return slots.length > 1 ? "9 a 17 h" : SLOTS[slots[0]];
+    return slots.length > 1 ? "9\u00a0a\u00a017\u00a0h" : SLOTS[slots[0]];
   }
-  var DATE_OPTIONS = 4;
+  var DATE_OPTIONS = 6;
   var weekday = new Intl.DateTimeFormat("es-AR", { weekday: "long" });
   var dayMonth = new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "long" });
   function parse(iso) {
@@ -86,6 +87,15 @@
   }
   function day(d) {
     return weekday.format(d) + " " + pad(d.getDate()) + "/" + pad(d.getMonth() + 1);
+  }
+  var weekdayShort = new Intl.DateTimeFormat("es-AR", { weekday: "short" });
+  // "vie 16/10, lun 19/10 o mar 20/10"
+  function daysList(isoDates) {
+    var items = isoDates.map(function (iso) {
+      var d = parse(iso);
+      return weekdayShort.format(d).replace(".", "") + "\u00a0" + pad(d.getDate()) + "/" + pad(d.getMonth() + 1);
+    });
+    return items.length > 1 ? items.slice(0, -1).join(", ") + " o " + items[items.length - 1] : items[0];
   }
 
   // ── Estado de agenda (R1–R5) ──────────────────────────────
@@ -113,6 +123,7 @@
     "en-curso": ["warning", "En curso", true],
     terminado: ["success", "Terminado", true],
     programado: ["info", "Programado", false],
+    "a-confirmar": ["warning", "A confirmar", true],
     reprogramado: ["info", "Reprogramado", false],
     definitivo: ["info", "Fecha definitiva", false],
     cancelado: ["neutral", "Cancelado", false],
@@ -172,7 +183,8 @@
       "dia-siguiente": ["calendarLock", "Fecha definitiva"],
       "cancelada-sullair": ["calendarX", "Visita cancelada"],
     };
-    var t = titles[state.status];
+    var t = state.pending ? ["calendar", "Nueva fecha a confirmar"] : titles[state.status];
+    var when = state.pending ? "A confirmar: " + daysList(state.pending) : capitalize(day(date));
     return {
       icon: t[0],
       eyebrow: "Mantenimiento preventivo · 1 equipo",
@@ -182,12 +194,12 @@
         {
           icon: "clock",
           label: "Fecha",
-          value: capitalize(day(date)) + " · " + slotsLabel(state.slots),
+          value: when + " · " + slotsLabel(state.slots),
           cls: state.status === "cancelada-sullair" ? "is-cancelled" : "",
           bind: "visit-date",
         },
         { icon: "pin", label: "Ubicación", value: site },
-        { icon: "user", label: "Técnico", value: "Lo confirmamos el día anterior" },
+        { avatar: avatar, label: "Técnico asignado", value: tech },
       ],
     };
   }
@@ -261,6 +273,7 @@
   }
 
   function agendaBadge() {
+    if (state.pending) return "a-confirmar";
     return { programada: "programado", reprogramada: "reprogramado", "dia-siguiente": "definitivo", "cancelada-sullair": "cancelado" }[state.status];
   }
 
@@ -271,6 +284,10 @@
         out += '<div class="notice notice--success">' + icon("done") + "<div><strong>Todo listo</strong><span>Se cerraron las intervenciones de los " + sc.equipos.length + " equipos.</span></div></div>";
       return out;
     }
+    if (state.pending)
+      out +=
+        '<div class="notice notice--info" role="status">' + icon("clock") +
+        "<div><strong>Recibimos tu disponibilidad</strong><span>Elegimos el día y la franja entre las opciones que marcaste y te confirmamos por WhatsApp.</span></div></div>";
     if (flash) out += '<div class="notice notice--success" role="status">' + icon("done") + "<div><strong>" + esc(flash.title) + "</strong><span>" + esc(flash.text) + "</span></div></div>";
     var date = parse(state.date);
     if (state.status === "dia-siguiente")
@@ -301,6 +318,7 @@
   function footerHTML() {
     if (!agenda || state.status === "cancelada-sullair") return "";
     if (state.status === "dia-siguiente") return "<p>Esta visita ya no admite cambios. Para otra modificación, contactá a tu ejecutivo de cuenta.</p>";
+    if (state.pending) return "<p>Te confirmamos la nueva fecha en unos minutos.</p>";
     var text, action;
     if (state.used === 0) {
       text = "¿No pueden recibirnos ese día?";
@@ -543,7 +561,8 @@
     '<form data-el="form">' +
     '<div class="sheet__head"><h2 id="sheet-title" data-el="sheet-title"></h2>' +
     '<span class="quota" data-el="sheet-quota"><span class="quota__dots" aria-hidden="true"><i></i><i></i></span><span data-el="sheet-quota-text"></span></span></div>' +
-    '<fieldset class="field" data-step="choose"><legend>Nueva fecha</legend><div class="options options--dates" data-el="date-options"></div></fieldset>' +
+    '<fieldset class="field" data-step="choose" aria-describedby="dates-hint"><legend>Días posibles</legend><div class="options options--dates" data-el="date-options"></div>' +
+    '<p class="field__hint" id="dates-hint" data-el="dates-hint"></p></fieldset>' +
     '<div class="notice notice--warning" data-step="forced" hidden>' + icon("calendar") + '<span>La visita pasa al <strong data-el="forced-day"></strong>. Elegí en qué franja pueden recibirnos.</span></div>' +
     '<fieldset class="field" aria-describedby="slots-hint"><legend>Franja horaria</legend><div class="options options--slots">' +
     '<label class="option option--check"><input type="checkbox" name="slots" value="manana"><span><strong>Mañana</strong>9 a 12 h</span></label>' +
@@ -638,10 +657,10 @@
     form.querySelector('[data-step="forced"]').hidden = !forced;
     el("sheet-quota").hidden = mode !== "reprogramar";
     if (mode === "reprogramar") {
-      el("sheet-title").textContent = "Nueva fecha";
+      el("sheet-title").textContent = "¿Cuándo pueden recibirnos?";
       setQuota(el("sheet-quota"), el("sheet-quota-text"), "Reprogramación " + (state.used + 1) + " de " + MAX);
     } else if (mode === "sullair") {
-      el("sheet-title").textContent = "Elegí una nueva fecha";
+      el("sheet-title").textContent = "¿Cuándo pueden recibirnos?";
     } else {
       el("sheet-title").textContent = "Cancelar visita";
       el("forced-day").textContent = day(nextBusinessDay(date));
@@ -657,14 +676,14 @@
         d = nextBusinessDay(d);
         options.insertAdjacentHTML(
           "beforeend",
-          '<label class="option"><input type="radio" name="date" value="' + toIso(d) + '"><span><strong>' + capitalize(weekday.format(d)) + "</strong>" + dayMonth.format(d) + "</span></label>"
+          '<label class="option option--check"><input type="checkbox" name="dates" value="' + toIso(d) + '"><span><strong>' + capitalize(weekday.format(d)) + "</strong>" + dayMonth.format(d) + "</span></label>"
         );
       }
-      confirm.textContent = "Confirmar nueva fecha";
     }
     form.querySelectorAll('input[name="slots"]').forEach(function (box) {
       box.checked = state.slots.indexOf(box.value) !== -1;
     });
+    touched = false;
     validateSheet();
     openLayer(el("sheet"), trigger);
   }
@@ -674,16 +693,32 @@
       return box.value;
     });
   }
-  // Se puede confirmar con fecha (salvo que sea forzada) y al menos una franja.
-  function validateSheet() {
-    var dateOk = sheetMode === "forzada" || !!form.querySelector('input[name="date"]:checked');
-    var slotsOk = checkedSlots().length > 0;
-    var hint = el("slots-hint");
-    hint.textContent = slotsOk ? "Podés marcar una o las dos." : "Elegí al menos una franja.";
-    hint.classList.toggle("is-error", !slotsOk);
-    el("confirm").disabled = !(dateOk && slotsOk);
+  function checkedDates() {
+    return Array.prototype.map.call(form.querySelectorAll('input[name="dates"]:checked'), function (box) {
+      return box.value;
+    });
   }
-  form.addEventListener("change", validateSheet);
+  // Criterio: al menos un día (salvo que la fecha sea forzada) y al menos una franja.
+  var touched = false;
+  function validateSheet() {
+    var forced = sheetMode === "forzada";
+    var dates = checkedDates().length;
+    var datesOk = forced || dates > 0;
+    var slotsOk = checkedSlots().length > 0;
+    var datesHint = el("dates-hint");
+    datesHint.textContent = datesOk || !touched ? "Podés marcar uno o varios." : "Elegí al menos un día.";
+    datesHint.classList.toggle("is-error", !datesOk && touched);
+    var slotsHint = el("slots-hint");
+    slotsHint.textContent = slotsOk ? "Podés marcar una o las dos." : "Elegí al menos una franja.";
+    slotsHint.classList.toggle("is-error", !slotsOk);
+    var confirm = el("confirm");
+    if (!forced) confirm.textContent = dates > 1 ? "Enviar disponibilidad" : "Confirmar nueva fecha";
+    confirm.disabled = !(datesOk && slotsOk);
+  }
+  form.addEventListener("change", function () {
+    touched = true;
+    validateSheet();
+  });
   form.addEventListener("submit", function (e) {
     e.preventDefault();
     var slots = checkedSlots();
@@ -692,16 +727,17 @@
       state = { used: state.used, date: toIso(nextBusinessDay(parse(state.date))), slots: slots, status: "dia-siguiente" };
       flash = null;
     } else {
-      var picked = form.querySelector('input[name="date"]:checked');
-      if (!picked) return;
-      var label = day(parse(picked.value)) + ", de " + slotsLabel(slots) + (slots.length > 1 ? " (mañana o tarde)." : ".");
-      if (sheetMode === "sullair") {
-        state = { used: state.used, date: picked.value, slots: slots, status: "programada" };
-        flash = { title: "Nueva fecha confirmada", text: "Te esperamos el " + label + " Este cambio no cuenta como reprogramación." };
+      var dates = checkedDates();
+      if (!dates.length) return validateSheet();
+      var used = sheetMode === "sullair" ? state.used : state.used + 1;
+      state = { used: used, date: dates[0], slots: slots, status: sheetMode === "sullair" ? "programada" : "reprogramada" };
+      if (dates.length > 1) {
+        // Varios días posibles: Sullair elige uno y lo confirma (en la demo, a los pocos segundos).
+        state.pending = dates;
+        flash = null;
+        scheduleConfirmation();
       } else {
-        var used = state.used + 1;
-        state = { used: used, date: picked.value, slots: slots, status: "reprogramada" };
-        flash = { title: "Visita reprogramada", text: "Quedó para el " + label + (used >= MAX ? " Ya no quedan reprogramaciones." : " Te avisamos por WhatsApp.") };
+        flash = confirmationFlash(sheetMode === "sullair" ? "Nueva fecha confirmada" : "Visita reprogramada");
       }
     }
     saveState();
@@ -713,6 +749,31 @@
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
+
+  function confirmationFlash(title) {
+    var label = day(parse(state.date)) + ", de " + slotsLabel(state.slots) + (state.slots.length > 1 ? " (mañana o tarde)." : ".");
+    var tail =
+      state.status === "programada" ? " Este cambio no cuenta como reprogramación." : state.used >= MAX ? " Ya no quedan reprogramaciones." : " Te avisamos por WhatsApp.";
+    return { title: title, text: (state.status === "programada" ? "Te esperamos el " : "Quedó para el ") + label + tail };
+  }
+
+  // Simula la respuesta de Sullair: toma el primer día y la primera franja marcados.
+  var confirmationTimer = null;
+  function scheduleConfirmation() {
+    clearTimeout(confirmationTimer);
+    confirmationTimer = setTimeout(function () {
+      if (!state.pending) return;
+      state.date = state.pending[0];
+      state.slots = [state.slots[0]];
+      delete state.pending;
+      flash = confirmationFlash("Sullair confirmó tu visita");
+      saveState();
+      paint();
+      root.querySelectorAll('[data-bind="visit-date"]').forEach(function (node) {
+        node.classList.add("is-updated");
+      });
+    }, 4000);
+  }
 
   // ── Control de la demo (botón flotante) ───────────────────
   var demo = document.createElement("div");
@@ -781,6 +842,7 @@
         closeLayers();
         break;
       case "reset":
+        clearTimeout(confirmationTimer);
         state = Object.assign({}, sc.state);
         flash = null;
         saveState();
@@ -850,6 +912,7 @@
 
   document.title = sc.id + " · " + sc.title + " · SullairGo";
   paint();
+  if (agenda && state.pending) scheduleConfirmation();
   initMap();
 
   if (sc.updated) {

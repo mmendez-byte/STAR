@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#030a15">
+<title>Comentarios · Proyecto STAR</title>
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/css/sgo-tokens.css">
+<link rel="stylesheet" href="/assets/css/sgo-components.css">
+<link rel="stylesheet" href="/assets/css/portal.css">
+</head>
+<body class="page page--hub">
+<header class="topbar">
+  <a class="topbar__brand" href="/" aria-label="Escenarios">
+    <img src="/assets/img/sullairgo-logo.jpg" alt="SullairGo" class="logo-on-dark">
+    <span class="topbar__project">Proyecto STAR</span>
+  </a>
+  <a class="topbar__action" href="/salir">Salir</a>
+</header>
+<main class="hub">
+  <div class="hub__header">
+    <p class="eyebrow"><a href="/" class="crumb">Escenarios</a> · Comentarios de testers</p>
+    <h1>Comentarios</h1>
+  </div>
+  <div class="filter" role="radiogroup" aria-label="Filtrar por estado">
+    <label><input type="radio" name="estado" value="abierto" checked><span>Abiertos <b data-count="abierto">0</b></span></label>
+    <label><input type="radio" name="estado" value="resuelto"><span>Resueltos <b data-count="resuelto">0</b></span></label>
+    <label><input type="radio" name="estado" value="todos"><span>Todos <b data-count="todos">0</b></span></label>
+  </div>
+  <div class="table-wrap">
+    <table class="comments-table">
+      <thead>
+        <tr><th scope="col">Pantalla</th><th scope="col">Comentario</th><th scope="col">Quién</th><th scope="col">Vista</th><th scope="col">Fecha</th><th scope="col"><span class="sr-only">Estado</span></th></tr>
+      </thead>
+      <tbody id="rows"><tr><td colspan="6" class="comments-table__empty">Cargando comentarios…</td></tr></tbody>
+    </table>
+  </div>
+</main>
+<script src="/app/data.js"></script>
+<script>
+// Todos los comentarios de los testers, para revisarlos y marcarlos como resueltos.
+(function () {
+  var titles = {};
+  window.STAR.SCENARIOS.forEach(function (s) { titles[s.id] = s.title; });
+  var comments = [];
+  var filter = "abierto";
+  var rows = document.getElementById("rows");
+  var fmt = new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  function esc(t) {
+    return String(t).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function paint() {
+    var counts = { abierto: 0, resuelto: 0, todos: comments.length };
+    comments.forEach(function (c) { counts[c.estado]++; });
+    Object.keys(counts).forEach(function (k) { document.querySelector('[data-count="' + k + '"]').textContent = counts[k]; });
+    var visible = comments.filter(function (c) { return filter === "todos" || c.estado === filter; });
+    if (!visible.length) {
+      rows.innerHTML = '<tr><td colspan="6" class="comments-table__empty">' +
+        (filter === "abierto" ? "No hay comentarios abiertos." : filter === "resuelto" ? "Todavía no se resolvió ningún comentario." : "Todavía no hay comentarios.") + "</td></tr>";
+      return;
+    }
+    rows.innerHTML = visible.map(function (c) {
+      var resolved = c.estado === "resuelto";
+      return '<tr' + (resolved ? ' class="is-resolved"' : "") + '>' +
+        '<td data-label="Pantalla"><a class="screen-link" href="/escenarios/' + esc(c.escenario) + '"><span class="code">' + esc(c.escenario) + '</span>' + esc(titles[c.escenario] || "") + '</a></td>' +
+        '<td data-label="Comentario" class="comments-table__text">' + esc(c.comentario) + '</td>' +
+        '<td data-label="Quién">' + esc(c.nombre) + '</td>' +
+        '<td data-label="Vista">' + (c.vista === "desktop" ? "Desktop" : "Celular") + '</td>' +
+        '<td data-label="Fecha" class="nowrap">' + esc(fmt.format(new Date(c.creado))) + '</td>' +
+        '<td data-label="Estado"><button type="button" class="state-btn" data-id="' + c.id + '">' + (resolved ? "Reabrir" : "Marcar resuelto") + '</button></td>' +
+        '</tr>';
+    }).join("");
+  }
+  document.querySelector(".filter").addEventListener("change", function (e) { filter = e.target.value; paint(); });
+  rows.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-id]");
+    if (!btn) return;
+    var id = Number(btn.getAttribute("data-id"));
+    var c = comments.filter(function (x) { return x.id === id; })[0];
+    btn.disabled = true;
+    fetch("/api/comentarios/" + id, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado: c.estado === "resuelto" ? "abierto" : "resuelto" }),
+    }).then(function (r) { return r.json(); }).then(function (data) {
+      if (data.comentario) comments = comments.map(function (x) { return x.id === id ? data.comentario : x; });
+      paint();
+    }).catch(function () { btn.disabled = false; });
+  });
+  fetch("/api/comentarios").then(function (r) { return r.json(); }).then(function (data) {
+    comments = data.comentarios || [];
+    paint();
+  }).catch(function () {
+    rows.innerHTML = '<tr><td colspan="6" class="comments-table__empty">No se pudieron cargar los comentarios.</td></tr>';
+  });
+})();
+</script>
+</body>
+</html>

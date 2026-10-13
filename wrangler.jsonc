@@ -15,5 +15,14 @@
     // SHA-256 de la contraseña de acceso. Para cambiarla: npm run hash -- "NuevaContraseña"
     "PASSWORD_HASH": "41d37eba3025c47f5586f470b2398ce170e7ccdb53adbdc0c4708100c4061102"
   },
+  // Comentarios de los testers (tabla en migrations/).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sullairgo-star",
+      "database_id": "0f295979-da35-43a5-8d3e-83e956a3f059",
+      "migrations_dir": "migrations"
+    }
+  ],
   "observability": { "enabled": true }
 }

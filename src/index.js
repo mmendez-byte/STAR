@@ -29,9 +29,12 @@ export default {
     }
 
     if (!(await isAuthenticated(request, env))) {
+      if (pathname.startsWith("/api/")) return json({ error: "Sesión vencida: volvé a ingresar." }, 401);
       const next = pathname === "/" ? "" : `?next=${encodeURIComponent(pathname + url.search)}`;
       return redirect(url, `/login${next}`);
     }
+
+    if (pathname.startsWith("/api/")) return api(request, env, url);
 
     const asset = SCENARIO_PATH.test(pathname) ? new Request(new URL("/visita", url), request) : request;
     const response = await env.ASSETS.fetch(asset);
@@ -41,6 +44,69 @@ export default {
     return new Response(response.body, { status: response.status, headers });
   },
 };
+
+// ── Comentarios de los testers (D1) ─────────────────────────
+// GET    /api/comentarios[?escenario=R1]   lista, más nuevos primero
+// POST   /api/comentarios                  { escenario, nombre, comentario, vista }
+// PATCH  /api/comentarios/:id              { estado: "abierto" | "resuelto" }
+async function api(request, env, url) {
+  const { pathname } = url;
+  if (pathname === "/api/comentarios" && request.method === "GET") {
+    const escenario = url.searchParams.get("escenario");
+    const query = escenario
+      ? env.DB.prepare("SELECT * FROM comentarios WHERE escenario = ?1 ORDER BY creado DESC, id DESC LIMIT 200").bind(escenario)
+      : env.DB.prepare("SELECT * FROM comentarios ORDER BY creado DESC, id DESC LIMIT 500");
+    const { results } = await query.all();
+    return json({ comentarios: results });
+  }
+
+  if (pathname === "/api/comentarios" && request.method === "POST") {
+    const body = await readJson(request);
+    if (!body) return json({ error: "No se pudo leer el comentario." }, 400);
+    const escenario = String(body.escenario || "").trim();
+    const nombre = String(body.nombre || "").trim();
+    const comentario = String(body.comentario || "").trim();
+    const vista = body.vista === "desktop" ? "desktop" : "mobile";
+    if (!/^[\w-]{1,12}$/.test(escenario)) return json({ error: "Pantalla desconocida." }, 400);
+    if (!nombre || nombre.length > 80) return json({ error: "Escribí tu nombre (hasta 80 caracteres)." }, 400);
+    if (!comentario || comentario.length > 2000) return json({ error: "Escribí el comentario (hasta 2000 caracteres)." }, 400);
+    const row = await env.DB.prepare(
+      "INSERT INTO comentarios (escenario, nombre, comentario, vista) VALUES (?1, ?2, ?3, ?4) RETURNING *"
+    )
+      .bind(escenario, nombre, comentario, vista)
+      .first();
+    return json({ comentario: row }, 201);
+  }
+
+  const byId = pathname.match(/^\/api\/comentarios\/(\d+)$/);
+  if (byId && request.method === "PATCH") {
+    const body = await readJson(request);
+    if (!body || !["abierto", "resuelto"].includes(body.estado)) return json({ error: "Estado inválido." }, 400);
+    const row = await env.DB.prepare(
+      "UPDATE comentarios SET estado = ?1, resuelto = CASE WHEN ?1 = 'resuelto' THEN strftime('%Y-%m-%dT%H:%M:%SZ', 'now') ELSE NULL END WHERE id = ?2 RETURNING *"
+    )
+      .bind(body.estado, Number(byId[1]))
+      .first();
+    return row ? json({ comentario: row }) : json({ error: "El comentario no existe." }, 404);
+  }
+
+  return json({ error: "No encontrado." }, 404);
+}
+
+async function readJson(request) {
+  try {
+    return await request.json();
+  } catch {
+    return null;
+  }
+}
+
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+  });
+}
 
 async function login(request, env, url) {
   const form = await request.formData();

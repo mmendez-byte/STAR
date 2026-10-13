@@ -42,6 +42,22 @@ Supuestos a validar con Sullair:
 4. Cada cambio avisa a Servicio Técnico (los destinatarios ya están definidos del lado de Sullair). En la demo no se envía nada.
 5. Falta definir hasta cuándo se puede reprogramar (por ejemplo, hasta el día anterior).
 
+## Comentarios de testers
+
+En cada pantalla hay una bolita flotante (encima de la del escenario) para dejar un comentario con nombre: queda asociado a esa pantalla y a si se estaba viendo en celular o desktop. El nombre se recuerda en el navegador. La bolita muestra cuántos comentarios abiertos tiene la pantalla.
+
+- `/comentarios` lista todos en una tabla, con filtro abiertos / resueltos y botón para marcarlos.
+- Se guardan en **Cloudflare D1** (base `sullairgo-star`, tabla `comentarios`; esquema en `migrations/`).
+- API (detrás del login): `GET /api/comentarios[?escenario=R1]`, `POST /api/comentarios`, `PATCH /api/comentarios/:id`.
+
+Para leerlos desde la terminal:
+
+```bash
+npx wrangler d1 execute sullairgo-star --remote --command "SELECT escenario, nombre, comentario, estado, creado FROM comentarios ORDER BY creado DESC"
+```
+
+En local, antes de `npm run dev`: `npx wrangler d1 migrations apply sullairgo-star --local`.
+
 ## Estructura
 
 ```
@@ -50,12 +66,15 @@ public/
   app/data.js            datos ilusorios: escenarios, equipos, planta, técnico
   app/app.js             render, mapa, reprogramación y botón de demo
   app/app.css            estilos mobile first (desktop desde 900 px)
+  app/comentarios.js     bolita y panel de comentarios de testers
+  comentarios.html       todos los comentarios (tabla)
   index.html             hub de escenarios (lee app/data.js)
   login.html             pantalla de acceso
   board.html             board de Claude Design (referencia)
   vendor/leaflet/        Leaflet 1.9.4
   assets/                tokens SullairGo, tipografías, logo, íconos, manifest
-src/index.js             Worker: login, sesión y ruteo de /escenarios/<código>
+src/index.js             Worker: login, sesión, ruteo de /escenarios/<código> y API de comentarios
+migrations/              esquema de D1
 design/                  export original del board (Claude Design)
 scripts/
   extract_board.py       desempaqueta el export: assets, tokens y board

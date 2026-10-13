@@ -13,6 +13,7 @@
       return s.id.toLowerCase() === requested.toLowerCase();
     })[0] || D.SCENARIOS[0];
   var agenda = sc.kind === "agenda";
+  window.STAR_ACTUAL = sc; // lo usa comentarios.js
 
   // ── Íconos (trazos del board) ─────────────────────────────
   var ICONS = {
@@ -800,7 +801,7 @@
       ? '<div class="demo__rule"><p><b>Regla en prueba:</b> hasta 2 reprogramaciones, con aviso de costo antes de cada una. Si cancela después, pasa al día hábil siguiente y queda fija. Las cancelaciones de Sullair no cuentan.</p>' +
         '<p>Reprogramaciones usadas: <b data-el-demo="used"></b> de 2 · <button type="button" class="link" data-action="reset">Reiniciar escenario</button></p></div>'
       : "") +
-    '<div class="demo__links"><a href="/">Todos los escenarios</a><a href="/board">Board de diseño</a><a href="/salir">Salir</a></div>' +
+    '<div class="demo__links"><a href="/">Todos los escenarios</a><a href="/comentarios">Todos los comentarios</a><a href="/board">Board de diseño</a><a href="/salir">Salir</a></div>' +
     "</div>";
   document.body.appendChild(demo);
   var demoPanel = $(".demo__panel", demo);

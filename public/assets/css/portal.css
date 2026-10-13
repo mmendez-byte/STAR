@@ -268,6 +268,41 @@ a:hover { color: var(--sgo-midnight-green-hover); }
   .hub__board { display: inline-flex; margin-top: var(--space-8); }
 }
 
+/* ── Comentarios (tabla) ────────────────────────────────── */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.crumb { color: inherit; }
+.filter { display: inline-flex; gap: 4px; margin-top: var(--space-6); padding: 4px; border-radius: var(--radius-full); background: var(--surface-card); box-shadow: var(--shadow-sm); }
+.filter label { position: relative; }
+.filter input { position: absolute; opacity: 0; }
+.filter span { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 var(--space-4); border-radius: var(--radius-full); font-size: var(--text-sm); font-weight: var(--fw-semibold); color: var(--text-secondary); cursor: pointer; }
+.filter b { font-weight: var(--fw-bold); color: var(--text-muted); }
+.filter input:checked + span { background: var(--sgo-midnight-green); color: var(--sgo-white); }
+.filter input:checked + span b { color: rgba(255, 255, 255, .8); }
+.filter input:focus-visible + span { outline: 3px solid var(--sgo-orange); outline-offset: 2px; }
+.table-wrap { margin-top: var(--space-4); border-radius: var(--radius-lg); background: var(--surface-card); box-shadow: var(--shadow-md); overflow: hidden; }
+.comments-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.comments-table th { padding: var(--space-3) var(--space-4); text-align: left; font-size: var(--text-xs); font-weight: var(--fw-bold); letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-default); }
+.comments-table td { padding: var(--space-4); vertical-align: top; border-bottom: 1px solid var(--border-default); }
+.comments-table tr:last-child td { border-bottom: 0; }
+.comments-table tr.is-resolved td { color: var(--text-muted); }
+.comments-table__text { width: 45%; white-space: pre-wrap; overflow-wrap: anywhere; }
+.comments-table__empty { text-align: center; color: var(--text-secondary); }
+.nowrap { white-space: nowrap; }
+.screen-link { display: inline-flex; align-items: center; gap: var(--space-2); font-weight: var(--fw-semibold); color: var(--text-primary); text-decoration: none; }
+.screen-link .code { width: 28px; height: 28px; font-size: var(--text-xs); }
+.state-btn { min-width: 128px; min-height: 36px; padding: 0 var(--space-3); border: 1.5px solid var(--sgo-midnight-green); border-radius: var(--radius-full); background: none; font: inherit; font-size: var(--text-xs); font-weight: var(--fw-bold); color: var(--sgo-midnight-green); cursor: pointer; white-space: nowrap; }
+.state-btn:hover { background: var(--sgo-midnight-green); color: var(--sgo-white); }
+.is-resolved .state-btn { border-color: var(--sgo-light-grey); color: var(--text-secondary); }
+@media (max-width: 767px) {
+  .comments-table thead { display: none; }
+  .comments-table, .comments-table tbody, .comments-table tr, .comments-table td { display: block; width: auto; }
+  .comments-table tr { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border-default); }
+  .comments-table td { display: flex; gap: var(--space-3); padding: var(--space-1) 0; border: 0; }
+  .comments-table td::before { content: attr(data-label); flex: none; width: 88px; font-size: var(--text-xs); font-weight: var(--fw-bold); text-transform: uppercase; color: var(--text-muted); }
+  .comments-table__empty::before { display: none; }
+  .comments-table td[data-label="Estado"] { padding-top: var(--space-2); }
+}
+
 /* ── Escenario ──────────────────────────────────────────────── */
 .page--scenario, .page--board { background: var(--portal-canvas); }
 .stage {
@@ -386,4 +421,8 @@ a:hover { color: var(--sgo-midnight-green-hover); }
 @media (prefers-reduced-motion: reduce) {
   .scenario-grid li, .login__card { animation: none; }
   .scenario-link, .scenario-link__thumb img, .scenario-link__arrow { transition: none; }
+}
+
+@media (min-width: 640px) {
+  .hub__board + .hub__board { margin-left: var(--space-3); }
 }

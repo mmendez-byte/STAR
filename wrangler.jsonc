@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sullairgo-star",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none"
+  },
+  "vars": {
+    // SHA-256 de la contraseña de acceso. Para cambiarla: npm run hash -- "NuevaContraseña"
+    "PASSWORD_HASH": "41d37eba3025c47f5586f470b2398ce170e7ccdb53adbdc0c4708100c4061102"
+  },
+  "observability": { "enabled": true }
+}

@@ -1,0 +1,27 @@
+[
+  {
+    "id": "0a",
+    "title": "Visita programada · reprogramación",
+    "device": "mobile"
+  },
+  {
+    "id": "1a",
+    "title": "Técnico en camino · 1 equipo",
+    "device": "mobile"
+  },
+  {
+    "id": "1b",
+    "title": "En sitio · 3 equipos",
+    "device": "mobile"
+  },
+  {
+    "id": "1c",
+    "title": "Visita finalizada",
+    "device": "mobile"
+  },
+  {
+    "id": "2a",
+    "title": "Desktop · Técnico en camino",
+    "device": "desktop"
+  }
+]

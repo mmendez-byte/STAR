@@ -1,0 +1,65 @@
+/* Componentes del design system SullairGo en CSS plano.
+   Equivalen a Badge y Button de SullairGoDesignSystem (export de Claude Design),
+   que en el board se renderizan con React. Acá van estáticos. */
+
+.sgo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.sgo-badge__dot { width: 6px; height: 6px; border-radius: var(--radius-full); background: currentColor; }
+.sgo-badge--success { background: var(--sgo-success-bg); color: var(--sgo-success); }
+.sgo-badge--warning { background: var(--sgo-warning-bg); color: var(--sgo-orange); }
+.sgo-badge--error   { background: var(--sgo-error-bg);   color: var(--sgo-error); }
+.sgo-badge--info    { background: var(--sgo-info-bg);    color: var(--sgo-midnight-green); }
+.sgo-badge--neutral { background: var(--sgo-light-grey); color: var(--sgo-blackish); }
+
+.sgo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-sm);
+  line-height: 1;
+  border: 2px solid transparent;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color .2s ease, color .2s ease, border-color .2s ease;
+  white-space: nowrap;
+}
+.sgo-btn--sm { padding: 8px 16px; font-size: var(--text-xs); }
+.sgo-btn--md { padding: 12px 24px; font-size: var(--text-sm); }
+.sgo-btn--lg { padding: 16px 32px; font-size: var(--text-base); }
+.sgo-btn--primary   { background: var(--sgo-midnight-green); color: var(--sgo-white); }
+.sgo-btn--secondary { background: transparent; color: var(--sgo-midnight-green); border-color: var(--sgo-midnight-green); }
+.sgo-btn--accent    { background: var(--sgo-orange); color: var(--sgo-white); }
+.sgo-btn--ghost     { background: transparent; color: var(--sgo-dark-grey); }
+.sgo-btn--primary:hover   { background: var(--sgo-midnight-green-hover); color: var(--sgo-white); }
+.sgo-btn--secondary:hover { background: var(--sgo-midnight-green); color: var(--sgo-white); }
+.sgo-btn--accent:hover    { background: var(--sgo-orange-hover); color: var(--sgo-white); }
+.sgo-btn--ghost:hover     { color: var(--sgo-blackish); }
+.sgo-btn:focus-visible { outline: 3px solid var(--sgo-orange); outline-offset: 2px; }
+.sgo-btn[disabled] { opacity: .45; cursor: not-allowed; }
+
+/* El logo del export es un JPEG sobre negro: sobre los headers oscuros el negro desaparece. */
+img[src$="sullairgo-logo.jpg"] { mix-blend-mode: screen; }
+
+/* Animaciones del mapa en vivo (ruta y pulso del técnico), tomadas del board. */
+@keyframes sgoDash { to { stroke-dashoffset: -160; } }
+@keyframes sgoPing { 0% { transform: scale(.5); opacity: .5; } 100% { transform: scale(2.1); opacity: 0; } }
+.sgo-dash { animation: sgoDash 3.5s linear infinite; }
+.sgo-ping { transform-box: fill-box; transform-origin: center; animation: sgoPing 2.2s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sgo-dash, .sgo-ping { animation: none; }
+}

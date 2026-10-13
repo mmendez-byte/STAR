@@ -1,0 +1,15 @@
+{
+  "name": "sullairgo-star",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Proyecto STAR · SullairGo — portal de escenarios del seguimiento de visita técnica",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build:escenarios": "python3 scripts/extract_board.py design/Seguimiento_de_visita_SullairGo.html",
+    "hash": "node scripts/hash-password.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

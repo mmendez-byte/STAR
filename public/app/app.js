@@ -449,12 +449,11 @@
     if (!agenda && sc.status === "en-camino") {
       var tech = [sc.tech.lat, sc.tech.lng];
       L.marker(tech, { icon: markerIcon("tech"), keyboard: false, title: D.TECH.name, zIndexOffset: 500 }).addTo(map);
-      map.fitBounds(L.latLngBounds([tech, site]), { padding: [56, 56] });
-      loadRoute(tech, site).then(function (route) {
+      // Solo el técnico (con su pulso) y la planta: no se dibuja recorrido,
+      // porque no se puede saber qué camino va a tomar.
+      map.fitBounds(L.latLngBounds([tech, site]), { padding: isMobile() ? [64, 40] : [72, 72] });
+      loadDistance(tech, site).then(function (route) {
         routeInfo = route;
-        L.polyline(route.coords, { color: "#ffffff", weight: 9, opacity: 0.9, lineCap: "round", lineJoin: "round" }).addTo(map);
-        L.polyline(route.coords, { color: "#025157", weight: 5, opacity: 1, lineCap: "round", lineJoin: "round", dashArray: "2 10", className: "route-line" }).addTo(map);
-        map.fitBounds(L.latLngBounds(route.coords), { padding: isMobile() ? [64, 40] : [72, 72] });
         paintMapOverlays();
       });
     } else if (!agenda && sc.status === "en-sitio") {
@@ -465,17 +464,18 @@
     }
   }
 
-  // Recorrido por calles reales (servicio público de OSRM). Si no responde, línea directa.
-  function loadRoute(from, to) {
-    var key = "star-ruta-" + from.join(",") + "-" + to.join(",");
+  // Distancia aproximada por calles (servicio público de OSRM), solo para el chip
+  // del mapa: no se pide ni se dibuja el trayecto. Si no responde, distancia directa × 1,25.
+  function loadDistance(from, to) {
+    var key = "star-distancia-" + from.join(",") + "-" + to.join(",");
     try {
       var cached = JSON.parse(sessionStorage.getItem(key));
-      if (cached && cached.coords) return Promise.resolve(cached);
+      if (cached && cached.meters) return Promise.resolve(cached);
     } catch (e) {}
     var url =
       "https://router.project-osrm.org/route/v1/driving/" +
       from[1] + "," + from[0] + ";" + to[1] + "," + to[0] +
-      "?overview=full&geometries=geojson";
+      "?overview=false";
     var timeout = new Promise(function (_, reject) {
       setTimeout(function () {
         reject(new Error("timeout"));
@@ -483,18 +483,14 @@
     });
     return Promise.race([fetch(url).then(function (r) { return r.json(); }), timeout])
       .then(function (data) {
-        var r = data.routes[0];
-        var route = {
-          coords: r.geometry.coordinates.map(function (c) { return [c[1], c[0]]; }),
-          meters: r.distance,
-        };
+        var route = { meters: data.routes[0].distance };
         try {
           sessionStorage.setItem(key, JSON.stringify(route));
         } catch (e) {}
         return route;
       })
       .catch(function () {
-        return { coords: [from, to], meters: L.latLng(from).distanceTo(to) * 1.25 };
+        return { meters: L.latLng(from).distanceTo(to) * 1.25 };
       });
   }
 

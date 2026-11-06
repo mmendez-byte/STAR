@@ -96,6 +96,19 @@ def replace_ds_components(markup):
     return markup
 
 
+def strip_dotted_routes(svg):
+    """Saca el recorrido punteado de los mapas del export.
+
+    No se puede saber qué camino va a tomar el técnico: el mapa muestra solo su
+    ubicación con el pulso. El recorrido son los <path> con stroke-dasharray y
+    los que repiten el mismo trazo debajo (el borde blanco y la línea de color).
+    """
+    text = svg.decode("utf-8")
+    for d in set(re.findall(r'<path d="([^"]+)"[^>]*stroke-dasharray', text)):
+        text = re.sub(r'<path d="%s"[^>]*(?:/>|>\s*</path>)' % re.escape(d), "", text)
+    return text.encode("utf-8")
+
+
 def write_assets(manifest, template):
     """Escribe los assets y devuelve {uuid: url pública}."""
     urls = {}
@@ -116,7 +129,7 @@ def write_assets(manifest, template):
     svg_uuids.sort(key=lambda u: template.find(u))
     for uuid in svg_uuids:
         name = next(svgs)
-        (ASSETS / "img" / name).write_bytes(decode(manifest[uuid]))
+        (ASSETS / "img" / name).write_bytes(strip_dotted_routes(decode(manifest[uuid])))
         urls[uuid] = f"/assets/img/{name}"
 
     # Tipografías: solo los subsets latin y latin-ext.

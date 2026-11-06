@@ -26,5 +26,23 @@
       "migrations_dir": "migrations"
     }
   ],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Previews de las ramas que no son la de producción (Cloudflare Workers Builds corre `npx wrangler preview`).
+  // Misma contraseña y clave de admin que producción, pero con una base D1 aparte: lo que se cargue
+  // o se borre en una preview no toca los comentarios ni las notas reales.
+  // Si cambia una contraseña, actualizar el hash en los dos lugares.
+  "previews": {
+    "vars": {
+      "PASSWORD_HASH": "41d37eba3025c47f5586f470b2398ce170e7ccdb53adbdc0c4708100c4061102",
+      "ADMIN_TOKEN_HASH": "7a1896ea7d722b240933490b668e9deded078c39a7adb1f13a2212388be509eb"
+    },
+    // Migraciones de esta base: wrangler.preview-migrations.jsonc (ver README).
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "sullairgo-star-preview",
+        "database_id": "2547751f-49b0-4b92-a3e1-d710e43c9293"
+      }
+    ]
+  }
 }

@@ -56,7 +56,7 @@ Separada de la interfaz de testers: no hay ningún enlace ni acción de admin en
 - `/admin`, pestaña **Comentarios de testers**: todos los comentarios en una tabla, filtro abiertos / resueltos / todos, marcar resuelto o reabrir, borrar y **descargar CSV**.
 - `/admin#notas`, pestaña **Notas de reuniones**: selector de fecha (con flechas y "Hoy"), título y notas libres por día, guardado automático y lista de las reuniones anotadas. Tabla `notas` en D1, una nota por fecha.
 - "Salir del modo admin" borra la cookie de admin.
-- El repo solo guarda el hash de la clave (`ADMIN_TOKEN_HASH` en `wrangler.jsonc`). Para cambiarla: `npm run hash -- "NuevaClave"`, pegar el resultado y desplegar; el link anterior deja de funcionar.
+- El repo solo guarda el hash de la clave (`ADMIN_TOKEN_HASH` en `wrangler.jsonc`). Para cambiarla: `npm run hash -- "NuevaClave"`, pegar el resultado (también en `previews.vars`) y desplegar; el link anterior deja de funcionar.
 
 API: `GET /api/comentarios[?escenario=R1]` y `POST /api/comentarios` con la sesión de testers; `PATCH` y `DELETE /api/comentarios/:id` y todo `/api/notas` solo en modo admin.
 
@@ -90,7 +90,8 @@ scripts/
   extract_board.py       desempaqueta el export: assets, tokens y board
   thumbs.mjs             miniaturas del hub (Playwright)
   hash-password.mjs      hash de la contraseña de acceso
-wrangler.jsonc           configuración de Cloudflare
+wrangler.jsonc           configuración de Cloudflare (producción y previews)
+wrangler.preview-migrations.jsonc  solo para migrar la base D1 de las previews
 ```
 
 ## Desarrollo local
@@ -116,7 +117,7 @@ Si llega una nueva versión del board de diseño: `cp …/Seguimiento_de_visita_
 npm run hash -- "NuevaContraseña"
 ```
 
-Se pega el resultado en `PASSWORD_HASH` y se despliega. Al cambiarla se cierran todas las sesiones abiertas.
+Se pega el resultado en `PASSWORD_HASH` (y en `previews.vars`, para que las previews usen la misma) y se despliega. Al cambiarla se cierran todas las sesiones abiertas.
 
 ## Despliegue en Cloudflare
 
@@ -130,6 +131,12 @@ Se pega el resultado en `PASSWORD_HASH` y se despliega. Al cambiarla se cierran 
 | Deploy command | `npx wrangler deploy` |
 
 El nombre del Worker en Cloudflare tiene que coincidir con `name` en `wrangler.jsonc`, o el build falla. La URL pública figura en la pestaña *Domains* del Worker.
+
+**Previews de las otras ramas.** Cada push a otra rama corre `npx wrangler preview` y deja una URL de preview (aparece en el PR). Las previews usan el bloque `previews` de `wrangler.jsonc`: la misma contraseña y clave de admin, pero una **base D1 aparte** (`sullairgo-star-preview`), así lo que se cargue o se borre en una preview no toca los comentarios ni las notas reales. Si se agrega una migración, aplicarla también a esa base:
+
+```bash
+npx wrangler d1 migrations apply PREVIEW_DB --remote --config wrangler.preview-migrations.jsonc
+```
 
 **Manual, desde la terminal.**
 

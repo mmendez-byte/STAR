@@ -1,0 +1,13 @@
+// Solo para aplicar migraciones a la base D1 de las previews (la que usa previews.d1_databases
+// en wrangler.jsonc). Tiene que apuntar a la misma base:
+//   npx wrangler d1 migrations apply PREVIEW_DB --remote --config wrangler.preview-migrations.jsonc
+{
+  "d1_databases": [
+    {
+      "binding": "PREVIEW_DB",
+      "database_name": "sullairgo-star-preview",
+      "database_id": "2547751f-49b0-4b92-a3e1-d710e43c9293",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

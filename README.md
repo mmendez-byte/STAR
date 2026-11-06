@@ -3,7 +3,7 @@
 Prototipo navegable de la pantalla de **seguimiento de visita técnica** de SullairGo (proyecto STAR, Linear P-SUL-33). El cliente recibe un link por WhatsApp y ve el estado de la visita sin necesidad de loguearse; acá se recorre esa experiencia con **datos ilusorios**, como si la plataforma estuviera funcionando.
 
 - **Una sola app responsive.** En el celular se ve y se usa como una app a pantalla completa (se puede agregar a la pantalla de inicio). En desktop, layout ancho con el mapa protagonista y los paneles a la derecha.
-- **Mapa real**: Leaflet con las teselas estándar de OpenStreetMap (sin clave; para producción conviene un proveedor con contrato). El recorrido del técnico se calcula por calles con el servicio público de OSRM; si no responde, se dibuja una línea directa.
+- **Mapa real**: Leaflet con las teselas estándar de OpenStreetMap (sin clave; para producción conviene un proveedor con contrato). El mapa muestra solo la ubicación del técnico (con su pulso) y la planta, sin dibujar recorrido: no se puede saber qué camino va a tomar. La distancia del chip se estima por calles con el servicio público de OSRM; si no responde, se usa la distancia directa.
 - **Acceso con contraseña única** (seguridad básica, sin usuarios). La sesión dura 7 días.
 - Corre en **Cloudflare Workers** con assets estáticos. No hay build: lo que está en `public/` es lo que se publica.
 
@@ -21,7 +21,7 @@ Cada escenario es la misma app en otro estado: `/escenarios/<código>`. Un botó
 | R4 | Cancela después de dos reprogramaciones | Pasó al día hábil siguiente (jueves 22/10) y quedó fija |
 | R5 | Cancela Sullair | Visita cancelada por Sullair: el cliente elige nueva fecha |
 
-**El día de la visita**: 1a Técnico en camino (mapa con el recorrido) · 1b En sitio, 3 equipos · 1c Visita finalizada.
+**El día de la visita**: 1a Técnico en camino (mapa con la ubicación del técnico) · 1b En sitio, 3 equipos · 1c Visita finalizada.
 
 Desde R1 se llega a R4 reprogramando dos veces y cancelando. "Reiniciar escenario" (en el botón flotante) lo devuelve al estado inicial. El board original de Claude Design queda como referencia en `/board`.
 
